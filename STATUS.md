@@ -55,3 +55,4 @@
 | 2026-09-14 | Day 2 (Task 2.1 - 2.5) | 完成雙倉流水 (Stock Ledger)、移動平均成本、訂單出貨與物流標籤 PDF、MIG 3.2.1 發票與 5.7cm PDF、SO:DO:INV:AR 四單剛性對帳與每日排程掃描，通過全部單元與架構邊界測試 (20/20 PASS) | PASS |
 | 2026-09-14 | 架構與記憶固化 | 補齊 ROADMAP.md Layer 3 Web GUI 規格與 View DTO 垂直切片準則，更新 AGENTS.md 守則，寫入 Serena 永久架構記憶 | PASS |
 | 2026-09-14 | Day 2 (Task 2.6 Web GUI) | 完成 Zero-Build SSR 管理後台（FastAPI+Jinja2+HTMX+Tailwind CDN），實作 View DTO、儀表板圖卡、訂單 HTMX 鎖庫/出貨/開票、雙倉調撥與 PDF 串流，通過全部端點整合測試 (25/25 PASS) | PASS |
+| 2026-09-14 | 操作手冊與 SSOT 定位 | 完善 README.md 作為全專案權威使用說明書與快速啟動指南，於 AGENTS.md 與 Serena 永久記憶明確固化其定位 | PASS |

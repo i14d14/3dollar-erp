@@ -5,6 +5,7 @@
 All agents working on this project must strictly adhere to the dynamic state tracking and dual-verification protocol:
 
 1. **SSOT Separation of Concerns**:
+   - [`README.md`](file:///d:/3dollar_erp/README.md) is the SOLE authoritative source for **Project Onboarding, Quick Start, and Operational User Manual (How to Run & Use)**. It contains service startup commands, URL routes, manual workflow instructions, and verification procedures.
    - [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md) is the SOLE authoritative source for **Specifications, Architecture Guardrails, and Dual-Track Boundaries (What & How)**. It defines the exact scope of the *Pessimistic MVP Baseline* vs *Optimistic Full Expansion*, architectural ports, and native file access rules.
    - [`STATUS.md`](file:///d:/3dollar_erp/STATUS.md) is the SOLE authoritative source for **Operational Execution State (Where & Now)**. It tracks active sprint progress, completion percentages, active blockers, and the verification log. It must NEVER serve as an independent specification.
 
@@ -72,19 +73,3 @@ Follow the file access matrix specified in [`ROADMAP.md`](file:///d:/3dollar_erp
 * **Contract-First via View DTOs**: Presentation queries and APIs must expose tailored View DTOs (carrying pre-aggregated KPIs, formatted currencies/dates, and visual badge states). Never expose raw database entities directly to views.
 * **Zero-Build SSR Architecture**: All Web UI must use Python server-driven rendering (`FastAPI` + `Jinja2` + `HTMX` + `Tailwind CSS` via CDN). Strictly prohibit heavy JavaScript frameworks and build pipelines (`npm`, `webpack`, `vite`, React, Vue) to eliminate environment rot and preserve sprint velocity.
 * **Vertical Slice Delivery**: Each domain sprint delivers its business logic and corresponding UI slice in tandem. Strictly prohibit deferring all GUI development to the final sprint.
-
----
-
-## 6. Web GUI Quick-Launch & Endpoints Operational Reference
-
-Whenever the user asks how to open, view, or launch the ERP Web GUI, immediately provide these exact commands and links:
-
-* **Startup Command** (run from workspace root `d:\3dollar_erp`):
-  ```powershell
-  python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
-  ```
-* **Accessible Endpoints**:
-  - 營運儀表板 (Executive Dashboard): `http://127.0.0.1:8000/`
-  - 訂單與出貨管理 (Orders & Fulfillment): `http://127.0.0.1:8000/orders`
-  - 多倉庫存與流水 (Inventory & Stock Ledger): `http://127.0.0.1:8000/inventory`
-  - 互動規格文件 (Interactive OpenAPI/Swagger): `http://127.0.0.1:8000/docs`
