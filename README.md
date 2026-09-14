@@ -80,3 +80,23 @@
 
 * **實質本體**：傳統的製造/貿易/批發業**進銷存（ERP）與記帳軟體**。
 * **包裝手法**：以 **LINE 對話介面** 當作前端操作皮囊，輔以 **OCR 與 LLM 分析** 作為 AI 賦能的行銷賣點，將傳統專案接案程式碼重組成標準化 SaaS 套件。
+
+---
+
+## 四、 快速啟動 Web 管理後台 (Quick Start Web GUI)
+
+本專案提供內建零構建（Zero-Build SSR）的企業級營運後台，採用 FastAPI + Jinja2 + HTMX + Tailwind CSS：
+
+### 1. 啟動伺服器
+於專案根目錄執行以下指令：
+```powershell
+python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
+```
+
+### 2. 訪問頁面
+啟動後使用瀏覽器開啟：
+* **營運儀表板**：[http://127.0.0.1:8000/](http://127.0.0.1:8000/)（KPI 圖卡、安全存量警報、近期單據）
+* **訂單與出貨管理**：[http://127.0.0.1:8000/orders](http://127.0.0.1:8000/orders)（HTMX 一鍵鎖庫、出貨扣庫、發票開立、物流與發票 PDF 下載）
+* **多倉庫存與流水**：[http://127.0.0.1:8000/inventory](http://127.0.0.1:8000/inventory)（主倉與門市倉存量、原子性調撥作業、雙記帳流水）
+* **API 互動規格文件**：[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)（OpenAPI / Swagger UI）
+

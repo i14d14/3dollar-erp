@@ -72,3 +72,19 @@ Follow the file access matrix specified in [`ROADMAP.md`](file:///d:/3dollar_erp
 * **Contract-First via View DTOs**: Presentation queries and APIs must expose tailored View DTOs (carrying pre-aggregated KPIs, formatted currencies/dates, and visual badge states). Never expose raw database entities directly to views.
 * **Zero-Build SSR Architecture**: All Web UI must use Python server-driven rendering (`FastAPI` + `Jinja2` + `HTMX` + `Tailwind CSS` via CDN). Strictly prohibit heavy JavaScript frameworks and build pipelines (`npm`, `webpack`, `vite`, React, Vue) to eliminate environment rot and preserve sprint velocity.
 * **Vertical Slice Delivery**: Each domain sprint delivers its business logic and corresponding UI slice in tandem. Strictly prohibit deferring all GUI development to the final sprint.
+
+---
+
+## 6. Web GUI Quick-Launch & Endpoints Operational Reference
+
+Whenever the user asks how to open, view, or launch the ERP Web GUI, immediately provide these exact commands and links:
+
+* **Startup Command** (run from workspace root `d:\3dollar_erp`):
+  ```powershell
+  python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
+  ```
+* **Accessible Endpoints**:
+  - 營運儀表板 (Executive Dashboard): `http://127.0.0.1:8000/`
+  - 訂單與出貨管理 (Orders & Fulfillment): `http://127.0.0.1:8000/orders`
+  - 多倉庫存與流水 (Inventory & Stock Ledger): `http://127.0.0.1:8000/inventory`
+  - 互動規格文件 (Interactive OpenAPI/Swagger): `http://127.0.0.1:8000/docs`
