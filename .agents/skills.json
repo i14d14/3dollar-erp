@@ -1,0 +1,18 @@
+{
+  "entries": [
+    {
+      "path": "C:/Users/pigmao/optional_skills",
+      "include_only": [
+        "software-architecture",
+        "sql",
+        "line-cloud-manager",
+        "excel-manager",
+        "pdf-manager",
+        "javascript-typescript",
+        "dependency-cruiser",
+        "docx-manager",
+        "cloudflare"
+      ]
+    }
+  ]
+}
