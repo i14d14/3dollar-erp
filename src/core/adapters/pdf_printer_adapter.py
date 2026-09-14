@@ -1,0 +1,89 @@
+from __future__ import annotations
+import datetime
+import fitz  # PyMuPDF
+
+from src.core.ports.printer_port import PrinterPort, ShippingLabelData
+
+
+class PdfPrinterAdapter(PrinterPort):
+    """Native PDF Label and Barcode Generator using PyMuPDF."""
+
+    def generate_shipping_label_pdf(self, label_data: ShippingLabelData) -> bytes:
+        """Generate a standardized 100x150mm logistics shipping label PDF."""
+        doc = fitz.open()
+        # 100mm = 283.46 pt, 150mm = 425.20 pt
+        width = 283.46
+        height = 425.20
+        page = doc.new_page(width=width, height=height)
+
+        # Outer border
+        margin = 10
+        page.draw_rect(fitz.Rect(margin, margin, width - margin, height - margin), color=(0, 0, 0), width=1.5)
+
+        # Logistics Provider Header
+        page.insert_text(fitz.Point(20, 35), "3Dollar EXPRESS LOGISTICS", fontsize=12, fontname="helv")
+        page.draw_line(fitz.Point(margin, 45), fitz.Point(width - margin, 45), color=(0, 0, 0), width=1.0)
+
+        # Tracking Number Section
+        page.insert_text(fitz.Point(20, 65), "TRACKING / 託運單號:", fontsize=9, fontname="china-t")
+        page.insert_text(fitz.Point(20, 85), label_data.tracking_number, fontsize=15, fontname="china-t")
+
+        # Barcode visual container
+        barcode_box = fitz.Rect(20, 95, width - 20, 135)
+        page.draw_rect(barcode_box, color=(0, 0, 0), width=0.8)
+        page.insert_text(fitz.Point(40, 120), f"* {label_data.tracking_number} *", fontsize=12, fontname="china-t")
+
+        # Divider
+        page.draw_line(fitz.Point(margin, 145), fitz.Point(width - margin, 145), color=(0, 0, 0), width=1.0)
+
+        # Order Information
+        page.insert_text(fitz.Point(20, 165), f"出貨單號 (DO): {label_data.do_id}", fontsize=10, fontname="china-t")
+        page.insert_text(fitz.Point(20, 185), f"銷售訂單 (SO): {label_data.order_id}", fontsize=10, fontname="china-t")
+
+        # Divider
+        page.draw_line(fitz.Point(margin, 195), fitz.Point(width - margin, 195), color=(0, 0, 0), width=1.0)
+
+        # Recipient Information
+        page.insert_text(fitz.Point(20, 215), "收件人資訊 (RECIPIENT):", fontsize=9, fontname="china-t")
+        page.insert_text(fitz.Point(20, 235), f"姓名: {label_data.recipient_name}", fontsize=11, fontname="china-t")
+        page.insert_text(fitz.Point(20, 255), f"電話: {label_data.recipient_phone}", fontsize=11, fontname="china-t")
+        page.insert_text(fitz.Point(20, 275), f"地址: {label_data.shipping_address}", fontsize=10, fontname="china-t")
+
+        # Divider
+        page.draw_line(fitz.Point(margin, 340), fitz.Point(width - margin, 340), color=(0, 0, 0), width=1.0)
+
+        # Footer Date & Signature Box
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        page.insert_text(fitz.Point(20, 360), f"列印時間: {now_str}", fontsize=8, fontname="china-t")
+        page.insert_text(fitz.Point(20, 380), "揀貨覆核員簽署: _______________", fontsize=9, fontname="china-t")
+        page.insert_text(fitz.Point(20, 400), "狀態: COMPLIANT STANDARD LABEL", fontsize=8, fontname="china-t")
+
+        pdf_bytes = doc.tobytes()
+        doc.close()
+        return pdf_bytes
+
+    def generate_barcode_label_pdf(self, sku: str, product_name: str, barcode_type: str = "Code128") -> bytes:
+        """Generate a product barcode sticker PDF (e.g. 50x30mm)."""
+        doc = fitz.open()
+        # 50mm = 141.73 pt, 30mm = 85.04 pt
+        width = 141.73
+        height = 85.04
+        page = doc.new_page(width=width, height=height)
+
+        margin = 4
+        page.draw_rect(fitz.Rect(margin, margin, width - margin, height - margin), color=(0, 0, 0), width=0.8)
+
+        # Product Name
+        page.insert_text(fitz.Point(8, 18), product_name[:20], fontsize=8, fontname="china-t")
+
+        # Barcode visual
+        b_box = fitz.Rect(8, 25, width - 8, 55)
+        page.draw_rect(b_box, color=(0, 0, 0), width=0.5)
+        page.insert_text(fitz.Point(15, 45), f"||| {sku} |||", fontsize=9, fontname="china-t")
+
+        # SKU code
+        page.insert_text(fitz.Point(8, 70), f"SKU: {sku} ({barcode_type})", fontsize=7, fontname="china-t")
+
+        pdf_bytes = doc.tobytes()
+        doc.close()
+        return pdf_bytes

@@ -1,17 +1,26 @@
 # Agent Guidelines & Operating Protocols
 
-## 1. Living SSOT Protocol (STATUS.md Governance)
+## 1. Living SSOT & Dual-Verification Protocol (STATUS.md & ROADMAP.md Governance)
 
-All agents working on this project must strictly adhere to dynamic state tracking:
+All agents working on this project must strictly adhere to the dynamic state tracking and dual-verification protocol:
 
-1. **Pre-Execution Check (Read First)**:
-   - Before proposing plans or executing commands, always inspect [`STATUS.md`](file:///d:/3dollar_erp/STATUS.md) to determine the current milestone, active tasks, and unresolved blockers.
-2. **Atomic State Synchronization**:
+1. **SSOT Separation of Concerns**:
+   - [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md) is the SOLE authoritative source for **Specifications, Architecture Guardrails, and Dual-Track Boundaries (What & How)**. It defines the exact scope of the *Pessimistic MVP Baseline* vs *Optimistic Full Expansion*, architectural ports, and native file access rules.
+   - [`STATUS.md`](file:///d:/3dollar_erp/STATUS.md) is the SOLE authoritative source for **Operational Execution State (Where & Now)**. It tracks active sprint progress, completion percentages, active blockers, and the verification log. It must NEVER serve as an independent specification.
+
+2. **Mandatory Dual-Check Before Execution (Read Both First)**:
+   - Before proposing plans, designing solutions, or executing code for any task:
+     a. Inspect [`STATUS.md`](file:///d:/3dollar_erp/STATUS.md) to identify the current active sprint, task, and blockers.
+     b. Inspect [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md) for that specific task's **Pessimistic MVP Baseline** vs **Optimistic Full Expansion** scope and architectural slots.
+     c. Strictly prohibit implementing features solely based on task titles in `STATUS.md` without verifying the boundary definitions in `ROADMAP.md`.
+
+3. **Atomic State Synchronization**:
    - Immediately upon completing and verifying any task or sub-milestone, update [`STATUS.md`](file:///d:/3dollar_erp/STATUS.md) in the same turn:
      - Mark the corresponding checkbox as completed (`- [x]`).
      - Re-calculate and update the overall completion percentage.
      - Append a concise entry to the **Verification Log** table with timestamp, milestone, verification summary, and PASS status.
-3. **Never Allow Drift**:
+
+4. **Never Allow Drift**:
    - Working tree changes must never drift ahead of [`STATUS.md`](file:///d:/3dollar_erp/STATUS.md). The file must reflect active operational ground truth at all times.
 
 ---
