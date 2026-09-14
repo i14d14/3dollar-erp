@@ -1,0 +1,59 @@
+<div id="stock-table-container" class="overflow-x-auto">
+  <table class="w-full text-left border-collapse">
+    <thead>
+      <tr class="bg-slate-50 text-slate-600 text-xs font-semibold border-b border-slate-200 uppercase tracking-wider">
+        <th class="px-4 py-3">倉庫別</th>
+        <th class="px-4 py-3">品號 (SKU)</th>
+        <th class="px-4 py-3">品名</th>
+        <th class="px-4 py-3 text-right">實體庫存</th>
+        <th class="px-4 py-3 text-right">虛擬鎖庫</th>
+        <th class="px-4 py-3 text-right">可用存量 (Available)</th>
+        <th class="px-4 py-3 text-right">安全存量</th>
+        <th class="px-4 py-3 text-center">庫存狀態</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100 text-sm">
+      {% for item in stocks %}
+      <tr class="hover:bg-slate-50 transition-colors">
+        <td class="px-4 py-3">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium {% if item.warehouse_id == 'WH-MAIN' %}bg-indigo-50 text-indigo-700 border border-indigo-200{% else %}bg-purple-50 text-purple-700 border border-purple-200{% endif %}">
+            <span class="w-1.5 h-1.5 rounded-full {% if item.warehouse_id == 'WH-MAIN' %}bg-indigo-500{% else %}bg-purple-500{% endif %}"></span>
+            {{ item.warehouse_name }}
+          </span>
+        </td>
+        <td class="px-4 py-3 font-mono font-medium text-slate-800">{{ item.sku }}</td>
+        <td class="px-4 py-3 text-slate-700">{{ item.product_name }}</td>
+        <td class="px-4 py-3 text-right font-mono font-semibold text-slate-900">{{ item.physical_balance }}</td>
+        <td class="px-4 py-3 text-right font-mono text-amber-600">
+          {% if item.locked_qty > 0 %}
+            -{{ item.locked_qty }}
+          {% else %}
+            0
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-right font-mono font-bold {% if item.available_qty <= 0 %}text-rose-600{% else %}text-emerald-600{% endif %}">
+          {{ item.available_qty }}
+        </td>
+        <td class="px-4 py-3 text-right font-mono text-slate-500">{{ item.safety_stock }}</td>
+        <td class="px-4 py-3 text-center">
+          {% if item.is_low_stock %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800 border border-rose-200">
+            低於安全量
+          </span>
+          {% else %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+            存量充裕
+          </span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" class="px-6 py-8 text-center text-slate-400 text-sm">
+          暫無庫存資料
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

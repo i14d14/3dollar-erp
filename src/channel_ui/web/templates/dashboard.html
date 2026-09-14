@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}營運儀表板 - 3Dollar ERP{% endblock %}
+{% block header_title %}營運即時儀表板 (Executive Dashboard){% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- 4 KPI Summary Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Card 1: Today's Orders -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">今日新增訂單</div>
+        <div class="text-2xl font-bold text-slate-900 mt-1">{{ summary.today_orders_count }} <span class="text-sm font-normal text-slate-500">筆</span></div>
+      </div>
+      <div class="w-12 h-12 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+      </div>
+    </div>
+
+    <!-- Card 2: Pending Shipments -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">待出貨訂單 (已鎖庫)</div>
+        <div class="text-2xl font-bold text-sky-600 mt-1">{{ summary.pending_shipments_count }} <span class="text-sm font-normal text-slate-500">筆</span></div>
+      </div>
+      <div class="w-12 h-12 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+      </div>
+    </div>
+
+    <!-- Card 3: Low Stock Alerts -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">安全存量警報</div>
+        <div class="text-2xl font-bold {% if summary.low_stock_alerts_count > 0 %}text-rose-600{% else %}text-emerald-600{% endif %} mt-1">
+          {{ summary.low_stock_alerts_count }} <span class="text-sm font-normal text-slate-500">項品號</span>
+        </div>
+      </div>
+      <div class="w-12 h-12 rounded-lg {% if summary.low_stock_alerts_count > 0 %}bg-rose-50 text-rose-600{% else %}bg-emerald-50 text-emerald-600{% endif %} flex items-center justify-center">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      </div>
+    </div>
+
+    <!-- Card 4: Unpaid AR -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">待沖銷應收帳款 (AR)</div>
+        <div class="text-2xl font-bold text-slate-900 mt-1">{{ summary.unpaid_ar_amount_formatted }}</div>
+      </div>
+      <div class="w-12 h-12 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Low Stock Alert Warning Box (Conditional) -->
+  {% if summary.low_stock_items %}
+  <div class="bg-rose-50 border border-rose-200 rounded-xl p-5 shadow-sm">
+    <div class="flex items-center gap-2 text-rose-800 font-semibold mb-3">
+      <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      低於安全存量商品清單 (需即刻安排採購入庫 PO)
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {% for item in summary.low_stock_items %}
+      <div class="bg-white p-3 rounded-lg border border-rose-100 shadow-2xs flex justify-between items-center text-xs">
+        <div>
+          <span class="font-mono font-bold text-slate-800">{{ item.sku }}</span>
+          <span class="text-slate-500 ml-1">({{ item.warehouse_name }})</span>
+          <div class="text-slate-600 mt-0.5">{{ item.product_name }}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-rose-600 font-bold text-sm">{{ item.physical_balance }} 現存</div>
+          <div class="text-slate-400">安全: {{ item.safety_stock }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent Orders Table -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
+      <div>
+        <h2 class="font-bold text-slate-900 text-base">近期訂單動態 (Recent Orders)</h2>
+        <p class="text-xs text-slate-500 mt-0.5">點擊各列按鈕可執行 HTMX 即時鎖庫、出貨扣庫與 MIG 發票開立</p>
+      </div>
+      <a href="/orders" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+        查看全部訂單 &rarr;
+      </a>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50 text-slate-600 text-xs font-semibold border-b border-slate-200 uppercase tracking-wider">
+            <th class="px-4 py-3">訂單編號 / 通路</th>
+            <th class="px-4 py-3">客戶代號 / 下單時間</th>
+            <th class="px-4 py-3">總金額</th>
+            <th class="px-4 py-3">狀態</th>
+            <th class="px-4 py-3">四單剛性勾稽狀態</th>
+            <th class="px-4 py-3 text-right">作業執行與單據</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for order in summary.recent_orders %}
+            {% include "partials/order_row.html" %}
+          {% else %}
+          <tr>
+            <td colspan="6" class="px-6 py-12 text-center text-slate-400 text-sm">
+              目前暫無訂單記錄
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

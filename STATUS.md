@@ -31,6 +31,7 @@
 - [x] **Task 2.3**: 訂單管理與出貨扣庫一條龍（落實 ROADMAP 悲觀 MVP：一鍵轉出貨單 DO、PDF 標籤）
 - [x] **Task 2.4**: 台灣電子發票開立與四單自動對帳（落實 ROADMAP 悲觀 MVP：MIG 3.2.1 MockProvider、SO 1:1 DO 1:1 INV 1:1 AR 剛性對帳）
 - [x] **Task 2.5**: 每日自動化排程引擎（落實 ROADMAP 悲觀 MVP：低安全存量掃描、逾期應收單據掃描）
+- [x] **Task 2.6**: Dinkoko ERP 營運管理 Web GUI 垂直切片（落實 Zero-Build SSR：儀表板 KPI、訂單與出貨 HTMX 局部更新、物流標籤與發票 PDF 串流、多倉調撥表）
 
 ### 後續衝刺清單 (Day 3 ~ Day 7 待啟動)
 > 具體業務規格、驗收標準與雙軌裁切定義嚴格收錄於 [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md)，此處不展開單一行標題以杜絕假性滿足：
@@ -53,3 +54,4 @@
 | 2026-09-14 | 治理與協議強化 | 重構 STATUS.md 與 AGENTS.md，消除偽完整假象，建立強制雙重查核（STATUS 進度 + ROADMAP 悲觀 MVP 規格）協議 | PASS |
 | 2026-09-14 | Day 2 (Task 2.1 - 2.5) | 完成雙倉流水 (Stock Ledger)、移動平均成本、訂單出貨與物流標籤 PDF、MIG 3.2.1 發票與 5.7cm PDF、SO:DO:INV:AR 四單剛性對帳與每日排程掃描，通過全部單元與架構邊界測試 (20/20 PASS) | PASS |
 | 2026-09-14 | 架構與記憶固化 | 補齊 ROADMAP.md Layer 3 Web GUI 規格與 View DTO 垂直切片準則，更新 AGENTS.md 守則，寫入 Serena 永久架構記憶 | PASS |
+| 2026-09-14 | Day 2 (Task 2.6 Web GUI) | 完成 Zero-Build SSR 管理後台（FastAPI+Jinja2+HTMX+Tailwind CDN），實作 View DTO、儀表板圖卡、訂單 HTMX 鎖庫/出貨/開票、雙倉調撥與 PDF 串流，通過全部端點整合測試 (25/25 PASS) | PASS |

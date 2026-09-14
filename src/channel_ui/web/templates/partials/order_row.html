@@ -1,0 +1,102 @@
+<tr id="order-row-{{ order.order_id }}" class="hover:bg-slate-50 transition-colors border-b border-slate-100 text-sm">
+  <!-- Order ID & Channel -->
+  <td class="px-4 py-3 font-mono font-medium text-slate-900">
+    <div>{{ order.order_id }}</div>
+    <span class="inline-block mt-0.5 px-2 py-0.5 text-[11px] font-medium rounded bg-slate-100 text-slate-600 border border-slate-200">
+      {{ order.channel }}
+    </span>
+  </td>
+
+  <!-- Customer & Date -->
+  <td class="px-4 py-3 text-slate-600">
+    <div class="font-medium text-slate-800">{{ order.customer_id }}</div>
+    <div class="text-xs text-slate-400 mt-0.5">{{ order.created_at }}</div>
+  </td>
+
+  <!-- Amount -->
+  <td class="px-4 py-3 font-semibold text-slate-900">
+    {{ order.total_amount_formatted }}
+  </td>
+
+  <!-- Status -->
+  <td class="px-4 py-3">
+    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ order.status_badge_class }}">
+      {{ order.status }}
+    </span>
+  </td>
+
+  <!-- 4-Way Reconciliation Status -->
+  <td class="px-4 py-3 text-xs">
+    <div class="flex flex-col gap-1">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full {% if order.do_id %}bg-emerald-500{% else %}bg-slate-300{% endif %}"></span>
+        <span class="text-slate-600">出貨單 (DO):</span>
+        <span class="font-mono text-slate-800">{% if order.do_id %}{{ order.do_id }}{% else %}<span class="text-slate-400">未出貨</span>{% endif %}</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full {% if order.invoice_number %}bg-emerald-500{% else %}bg-slate-300{% endif %}"></span>
+        <span class="text-slate-600">電子發票 (INV):</span>
+        <span class="font-mono text-slate-800">{% if order.invoice_number %}{{ order.invoice_number }}{% else %}<span class="text-slate-400">未開立</span>{% endif %}</span>
+      </div>
+    </div>
+  </td>
+
+  <!-- Actions & Downloads -->
+  <td class="px-4 py-3 text-right">
+    <div class="flex items-center justify-end gap-2 flex-wrap">
+      <!-- Confirm Order Button -->
+      {% if order.can_confirm %}
+      <button 
+        hx-post="/orders/{{ order.order_id }}/confirm"
+        hx-target="#order-row-{{ order.order_id }}"
+        hx-swap="outerHTML"
+        class="px-2.5 py-1.5 text-xs font-medium rounded-md bg-sky-600 text-white hover:bg-sky-700 shadow-sm transition">
+        鎖庫確認
+      </button>
+      {% endif %}
+
+      <!-- One-click Ship Button -->
+      {% if order.can_ship %}
+      <button 
+        hx-post="/orders/{{ order.order_id }}/ship"
+        hx-target="#order-row-{{ order.order_id }}"
+        hx-swap="outerHTML"
+        class="px-2.5 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition">
+        一鍵出貨 (扣庫)
+      </button>
+      {% endif %}
+
+      <!-- Issue Invoice Button -->
+      {% if order.can_invoice %}
+      <button 
+        hx-post="/orders/{{ order.order_id }}/invoice"
+        hx-target="#order-row-{{ order.order_id }}"
+        hx-swap="outerHTML"
+        class="px-2.5 py-1.5 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition">
+        開立發票
+      </button>
+      {% endif %}
+
+      <!-- PDF Downloads -->
+      {% if order.has_shipping_label %}
+      <a 
+        href="/orders/{{ order.order_id }}/label.pdf" 
+        target="_blank"
+        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition shadow-sm"
+        title="列印物流標籤 PDF">
+        🏷️ 標籤
+      </a>
+      {% endif %}
+
+      {% if order.has_invoice_pdf %}
+      <a 
+        href="/orders/{{ order.order_id }}/invoice.pdf" 
+        target="_blank"
+        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition shadow-sm"
+        title="列印電子發票證明聯 (5.7cm)">
+        🧾 發票
+      </a>
+      {% endif %}
+    </div>
+  </td>
+</tr>
