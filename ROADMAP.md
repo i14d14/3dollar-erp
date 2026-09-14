@@ -103,8 +103,26 @@
 
 ---
 
-### 第三層：外圍通路層（Channel & UI - LINE Bot 輕量對話入口）
+### 第三層：外圍通路與介面層（Channel & UI - Web 管理後台與 LINE 客戶入口）
 
+> [!IMPORTANT]
+> **雙介面職責切分 SSOT**：
+> * **Web GUI** 為企業內部管理者、倉管與會計之**主要作業後台**（Web Dashboard、單據表格、流程狀態、RWD 行動端）。
+> * **LINE Bot** 為外部終端客戶之**輕量通路與加值服務**（Flex Message 商品卡、一鍵下單、出貨進度文字查詢）。
+
+#### 1. 內部管理 Web GUI（Admin Console & Dashboard）
+* 🟢 **【悲觀基準 MVP】（Zero-Build SSR 垂直切片）**：
+  1. **營運數據可視化儀表板 (Dashboard)**：以 View DTO 驅動展示「今日訂單數、本月營收、待出貨數、待收帳款」統計圖卡。
+  2. **單據管理與作業表格**：表格化清單管理訂單 (SO)、出貨單 (DO)、電子發票 (INV)、庫存與流水，支援狀態篩選、一鍵轉單與 PDF 標籤列印。
+  3. **流程節點進度條**：直觀顯示「訂單 $\rightarrow$ 出貨 $\rightarrow$ 對帳 $\rightarrow$ 完成」之單據生命週期進度。
+  4. **手機／平板 RWD 行動介面**：倉管或外勤人員可於瀏覽器登入，直接查詢即時庫存並點擊出貨。
+  5. **技術選型與架構**：採用 `FastAPI` + `Jinja2` + `HTMX` + `Tailwind CSS (CDN)`，零 Node.js 打包構建，透過 View DTO 與下層服務解耦。
+* 🚀 **【樂觀完整版】（時間充裕時解鎖之進階功能）**：
+  1. WebSocket 即時推播新訂單通知與庫存變動浮動警示。
+  2. 倉管相機條碼／QR Code 掃描即時揀貨驗收介面。
+  3. 自訂欄位顯示與使用者權限角色遮罩（RBAC 畫面過濾）。
+
+#### 2. 外部客戶輕量通路（LINE Bot 智能對話入口）
 * 🟢 **【悲觀基準 MVP】（當前落地目標）**：
   1. **LINE Webhook 骨架**：簽名驗證（HMAC-SHA256）、訊息派發通道。
   2. **Flex Message 下單**：直覺展示商品卡片與規格，點選後穿透寫入 ERP 生成訂單。
@@ -134,12 +152,12 @@
 
 ## 四、 7 天雙軌時程規劃表 (7-Day Dual-Track Sprint)
 
-| 天數 | 衝刺主題 | 🟢 悲觀 MVP 交付標準 (底線) | 🚀 樂觀解鎖項目 (時間充裕時) |
+| 天數 | 衝刺主題 | 🟢 悲觀 MVP 交付標準 (底線 - 垂直切片) | 🚀 樂觀解鎖項目 (時間充裕時) |
 | :---: | :--- | :--- | :--- |
 | **Day 1** | **核心架構與資料基底** | • Modular Monolith 四層骨架<br>• ANSI 關聯資料庫 Schema (18表)<br>• AST 架構邊界守護測試通過 (5/5 PASS) | • 多資料庫（PostgreSQL）連線配置<br>• 進階資料庫 Migration 腳本 |
-| **Day 2** | **Dinkoko ERP 核心流程** | • 雙倉庫存流水 (Stock Ledger) 與調撥<br>• 採購入庫 (GRN) 移動平均成本<br>• 訂單一鍵轉出貨單、PDF 標籤<br>• MIG 3.2.1 發票 Mock 與四單勾稽 | • 多單位動態換算（箱/包/個）<br>• ZPL 實體標籤機指令<br>• 1:N 拆批出貨 |
-| **Day 3** | **TanJee 會計與記帳系統** | • ERP 事件自動拋轉借貸傳票 ($Dr=Cr$)<br>• 應收/應付帳齡分析與逾期清單<br>• 損益表與試算表產出 (xlsxwriter) | • 現金流量表產出<br>• 多幣別與匯兌損益換算<br>• 多專案/部門維度分攤 |
-| **Day 4** | **DanLee CRM 前段商機** | • 客戶主檔與四段商機管線<br>• 贏單 (WON) 一鍵穿透轉 ERP 訂單<br>• 報價單 DOCX 範本套印與 PDF 轉檔 | • AI 名片辨識建立潛客<br>• Lead Scoring 算分引擎<br>• Day 0/3/7 跟進郵件提醒 |
-| **Day 5** | **LINE Bot 智能通路入口** | • LINE Webhook 簽名驗證<br>• Flex Message 型錄與一鍵下單寫入 ERP<br>• 訂單出貨進度即時文字查詢 | • 完整購物車暫存狀態機<br>• LIFF GPS 考勤打卡與審批<br>• 分眾動態 Rich Menu |
-| **Day 6** | **AI 增強外掛與檔案自動化** | • BOM 表 Excel 原生解析 (openpyxl)<br>• 原生 PDF 發票文字層抽取 (fitz)<br>• 原生報表匯出與格式美化 | • 圖片 OCR 發票拍照掃描<br>• 網銀對帳單 AI 智慧勾稽<br>• Agentic RAG 內部知識庫問答 |
-| **Day 7** | **全鏈路端到端整合與驗收** | • E2E 全流程打通：商機 -> 報價 -> LINE下單 -> ERP扣庫出貨 -> 會計出表<br>• 展示環境資料種子 (Seed Data)<br>• 交付驗收報告完備 | • 租戶功能點數計費模組<br>• 壓力測試與高並發鎖庫容錯 |
+| **Day 2** | **Dinkoko ERP 核心流程** | • 雙倉庫存流水 (Stock Ledger) 與調撥<br>• 採購入庫 (GRN) 移動平均成本<br>• 訂單一鍵轉出貨單、PDF 標籤<br>• MIG 3.2.1 發票 Mock 與四單勾稽<br>• ERP 營運單據 View DTO 與管理後台切片 (HTMX) | • 多單位動態換算（箱/包/個）<br>• ZPL 實體標籤機指令<br>• 1:N 拆批出貨<br>• 條碼相機掃描出貨 |
+| **Day 3** | **TanJee 會計與記帳系統** | • ERP 事件自動拋轉借貸傳票 ($Dr=Cr$)<br>• 應收/應付帳齡分析與逾期清單<br>• 損益表與試算表產出 (xlsxwriter)<br>• 會計試算表與帳齡可視化 Web 切片 (HTMX) | • 現金流量表產出<br>• 多幣別與匯兌損益換算<br>• 多專案/部門維度分攤 |
+| **Day 4** | **DanLee CRM 前段商機** | • 客戶主檔與四段商機管線<br>• 贏單 (WON) 一鍵穿透轉 ERP 訂單<br>• 報價單 DOCX 範本套印與 PDF 轉檔<br>• CRM 商機看板 (Kanban) Web 切片 (HTMX) | • AI 名片辨識建立潛客<br>• Lead Scoring 算分引擎<br>• Day 0/3/7 跟進郵件提醒 |
+| **Day 5** | **LINE Bot 智能通路入口** | • LINE Webhook 簽名驗證<br>• Flex Message 型錄與一鍵下單寫入 ERP<br>• 訂單出貨進度即時文字查詢<br>• 客戶端與管理端全鏈路聯調 | • 完整購物車暫存狀態機<br>• LIFF GPS 考勤打卡與審批<br>• 分眾動態 Rich Menu |
+| **Day 6** | **AI 增強外掛與檔案自動化** | • BOM 表 Excel 原生解析 (openpyxl)<br>• 原生 PDF 發票文字層抽取 (fitz)<br>• 原生報表匯出與格式美化<br>• Web 報表與上傳預覽切片 | • 圖片 OCR 發票拍照掃描<br>• 網銀對帳單 AI 智慧勾稽<br>• Agentic RAG 內部知識庫問答 |
+| **Day 7** | **全鏈路端到端整合與驗收** | • E2E 全流程打通：商機 -> 報價 -> LINE下單 -> ERP扣庫出貨 -> 會計出表<br>• Web 管理後台 + LINE Bot 雙端全面驗收<br>• 展示環境資料種子 (Seed Data)<br>• 交付驗收報告完備 | • 租戶功能點數計費模組<br>• 壓力測試與高並發鎖庫容錯 |

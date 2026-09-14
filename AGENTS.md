@@ -32,7 +32,7 @@ Enforce the 4-layer dependency model defined in [`ROADMAP.md`](file:///d:/3dolla
 ```
 Layer 4: AI Wrapper (Data Intake & Analytics)
    |
-Layer 3: Channel & UI (LINE Bot Ordering, Support, Attendance)
+Layer 3: Channel & UI (Admin Web Dashboard & LINE Bot Customer Channel)
    |
 Layer 2: Extended Core (DanLee CRM & TanJee Accounting)
    |
@@ -41,9 +41,9 @@ Layer 1: Core Engine (Dinkoko ERP - Inventory, Orders, Invoicing)
 
 ### Invariants:
 * **Unidirectional Dependency Flow**: Lower layers must NEVER import or depend upon higher layers.
-  - Layer 1 (Dinkoko ERP) has zero outgoing dependencies on CRM, Accounting, LINE Bots, or AI wrappers.
+  - Layer 1 (Dinkoko ERP) has zero outgoing dependencies on CRM, Accounting, LINE Bots, or UI.
   - Layer 2 (CRM / Accounting) depends on Layer 1 via domain events or explicit service boundaries.
-  - Layer 3 (LINE Bots) interacts with ERP/CRM strictly through public service APIs / DTOs.
+  - Layer 3 (Admin Web GUI & LINE Bots) interacts with ERP/CRM strictly through public service APIs / View DTOs.
   - Layer 4 (AI Wrappers) acts as non-blocking sidecars or data transformation pipelines.
 * **Architecture Fitness Functions**: Run `dependency-cruiser` to continuously enforce layer boundaries and prevent circular dependencies.
 
@@ -63,3 +63,12 @@ Follow the file access matrix specified in [`ROADMAP.md`](file:///d:/3dollar_erp
 * **OS and Shell**: Windows host with Windows PowerShell. Always load [`powershell-docs`](file:///C:/Users/pigmao/.agents/skills/powershell-docs/SKILL.md) before shell operations. Strictly prohibit Linux-specific commands.
 * **Encoding**: Explicit UTF-8 across all scripts (`sys.stdout.reconfigure(encoding='utf-8')`). Never redirect via PowerShell 5.1 `>` to prevent UTF-16LE mojibake.
 * **Packages and Pip**: Standard library first. Never run `pip install` without explicit user permission.
+
+---
+
+## 5. UI & View Contract Guardrails (Zero-Build SSR & Vertical Slices)
+
+* **Web GUI Is Mandatory**: Dinkoko ERP is an operational ERP requiring visual administration (Web Dashboard, table views, order status progression, mobile RWD). LINE Bot is strictly an external customer touchpoint / value-added channel, NOT a substitute for the internal administrative Web GUI.
+* **Contract-First via View DTOs**: Presentation queries and APIs must expose tailored View DTOs (carrying pre-aggregated KPIs, formatted currencies/dates, and visual badge states). Never expose raw database entities directly to views.
+* **Zero-Build SSR Architecture**: All Web UI must use Python server-driven rendering (`FastAPI` + `Jinja2` + `HTMX` + `Tailwind CSS` via CDN). Strictly prohibit heavy JavaScript frameworks and build pipelines (`npm`, `webpack`, `vite`, React, Vue) to eliminate environment rot and preserve sprint velocity.
+* **Vertical Slice Delivery**: Each domain sprint delivers its business logic and corresponding UI slice in tandem. Strictly prohibit deferring all GUI development to the final sprint.
