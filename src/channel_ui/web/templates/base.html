@@ -8,6 +8,30 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- HTMX CDN -->
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script>
+    document.addEventListener('htmx:beforeSwap', function(evt) {
+      // 4xx (業務預期防呆): 允許處理，配合後端 OOB 放入通知區
+      if (evt.detail.xhr.status >= 400 && evt.detail.xhr.status < 500) {
+        evt.detail.shouldSwap = true;
+        evt.detail.isError = false;
+      }
+      // 5xx (未預期崩潰): 嚴格禁止抽換主要 DOM，防止醜陋報錯破壞畫面
+      else if (evt.detail.xhr.status >= 500) {
+        evt.detail.shouldSwap = false;
+        const toast = document.getElementById('toast-container');
+        if (toast) {
+          toast.innerHTML = `
+            <div class="p-3 my-2 text-xs text-rose-800 bg-rose-50 border border-rose-300 rounded-lg flex items-center justify-between shadow-sm">
+              <div class="flex items-center gap-2">
+                <span class="text-rose-600 font-bold text-sm">🚨</span>
+                <span class="font-medium">系統內部發生異常，已自動阻斷原始報錯並保全畫面，請稍後重試。</span>
+              </div>
+              <button onclick="document.getElementById('toast-container').innerHTML=''" class="text-rose-400 hover:text-rose-700 font-bold ml-2 text-base leading-none">&times;</button>
+            </div>`;
+        }
+      }
+    });
+  </script>
   <style>
     .htmx-indicator { display: none; }
     .htmx-request .htmx-indicator { display: inline-block; }
@@ -25,7 +49,7 @@
       </div>
       <div>
         <div class="font-bold tracking-wide text-white text-base">3Dollar ERP</div>
-        <div class="text-xs text-slate-400">三元科技架構引擎</div>
+        <div class="text-xs text-slate-400">三圓科技架構引擎</div>
       </div>
     </div>
 
@@ -50,14 +74,14 @@
         <div class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">即將解鎖模組</div>
       </div>
 
-      <div class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 cursor-not-allowed">
-        <svg class="w-5 h-5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        TanJee 會計記帳 (Day 3)
-      </div>
+      <a href="/accounting" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'accounting' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+        <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        探吉 會計記帳
+      </a>
 
       <div class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 cursor-not-allowed">
         <svg class="w-5 h-5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-        DanLee CRM 商機 (Day 4)
+        哩來 CRM 商機 (Day 4)
       </div>
 
       <div class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 cursor-not-allowed">

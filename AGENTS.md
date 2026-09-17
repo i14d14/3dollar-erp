@@ -6,13 +6,13 @@ All agents working on this project must strictly adhere to the dynamic state tra
 
 1. **SSOT Separation of Concerns**:
    - [`README.md`](file:///d:/3dollar_erp/README.md) is the SOLE authoritative source for **Project Onboarding, Quick Start, and Operational User Manual (How to Run & Use)**. It contains service startup commands, URL routes, manual workflow instructions, and verification procedures.
-   - [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md) is the SOLE authoritative source for **Specifications, Architecture Guardrails, and Dual-Track Boundaries (What & How)**. It defines the exact scope of the *Pessimistic MVP Baseline* vs *Optimistic Full Expansion*, architectural ports, and native file access rules.
+   - [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md) is the SOLE authoritative source for **Specifications, Architecture Guardrails, and Dual-Track Boundaries (What & How)**. It defines the exact scope of the *Youth Edition MVP Baseline (青春版)* vs *Optimistic Full Expansion*, architectural ports, and native file access rules.
    - [`STATUS.md`](file:///d:/3dollar_erp/STATUS.md) is the SOLE authoritative source for **Operational Execution State (Where & Now)**. It tracks active sprint progress, completion percentages, active blockers, and the verification log. It must NEVER serve as an independent specification.
 
 2. **Mandatory Dual-Check Before Execution (Read Both First)**:
    - Before proposing plans, designing solutions, or executing code for any task:
      a. Inspect [`STATUS.md`](file:///d:/3dollar_erp/STATUS.md) to identify the current active sprint, task, and blockers.
-     b. Inspect [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md) for that specific task's **Pessimistic MVP Baseline** vs **Optimistic Full Expansion** scope and architectural slots.
+     b. Inspect [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md) for that specific task's **Youth Edition MVP Baseline (青春版)** vs **Optimistic Full Expansion** scope and architectural slots.
      c. Strictly prohibit implementing features solely based on task titles in `STATUS.md` without verifying the boundary definitions in `ROADMAP.md`.
 
 3. **Atomic State Synchronization**:
@@ -35,7 +35,7 @@ Layer 4: AI Wrapper (Data Intake & Analytics)
    |
 Layer 3: Channel & UI (Admin Web Dashboard & LINE Bot Customer Channel)
    |
-Layer 2: Extended Core (DanLee CRM & TanJee Accounting)
+Layer 2: Extended Core (LiLai CRM & TanGii Accounting)
    |
 Layer 1: Core Engine (Dinkoko ERP - Inventory, Orders, Invoicing)
 ```
@@ -73,3 +73,19 @@ Follow the file access matrix specified in [`ROADMAP.md`](file:///d:/3dollar_erp
 * **Contract-First via View DTOs**: Presentation queries and APIs must expose tailored View DTOs (carrying pre-aggregated KPIs, formatted currencies/dates, and visual badge states). Never expose raw database entities directly to views.
 * **Zero-Build SSR Architecture**: All Web UI must use Python server-driven rendering (`FastAPI` + `Jinja2` + `HTMX` + `Tailwind CSS` via CDN). Strictly prohibit heavy JavaScript frameworks and build pipelines (`npm`, `webpack`, `vite`, React, Vue) to eliminate environment rot and preserve sprint velocity.
 * **Vertical Slice Delivery**: Each domain sprint delivers its business logic and corresponding UI slice in tandem. Strictly prohibit deferring all GUI development to the final sprint.
+* **User-Facing Error Messages & I18n Protocol (Strict Traditional Chinese for UI/Toasts)**:
+  - Every error message presented to human operators via HTMX (`#toast-container`, OOB swap banners, form feedback, and `HTTPException.detail` passed to the view) MUST be authored in professional Traditional Chinese (繁體中文).
+  - Strictly prohibit raw internal English exception traces and uncaught English domain errors from leaking directly to the UI.
+  - Implement a Two-Tier Defense:
+    1. *Tier 1 (Domain Services)*: Service exceptions intended for client display should formulate their human-readable message in Traditional Chinese (retaining technical IDs like SKU, Order ID, Warehouse ID).
+    2. *Tier 2 (Web Layer / Exception Handler)*: The web exception handler (`app.py`) serves as an automated safety net, normalizing and translating any domain/system exception before injecting it into the toast banner.
+
+---
+
+## 6. Interactive Verification & User Testing Protocol (Action -> Expected Outcome)
+
+Whenever reporting newly added features for manual verification or guiding the user through step-by-step testing:
+* **Mandatory Action $\rightarrow$ Expected Structure**: Every test scenario or feature item must strictly follow the paired format:
+  - **Action (動作)**: Concrete operational step to perform (target page/tab, button clicked, form inputs, sample payload).
+  - **Expected Outcome (預期)**: Concrete visual, data, or system reaction (UI badge update, toast/banner, PDF/Excel stream download, database reflection).
+* Strictly prohibit listing feature names or summaries without the explicit paired Action $\rightarrow$ Expected Outcome breakdown.
