@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. Accounts Receivable (AR) - Four Document Linking
+-- 8. Accounts Receivable (AR) & Accounts Payable (AP) - Cash Flow Control
 CREATE TABLE IF NOT EXISTS accounts_receivable (
     ar_id TEXT PRIMARY KEY,
     order_id TEXT NOT NULL UNIQUE REFERENCES sales_orders(order_id),
@@ -128,13 +128,38 @@ CREATE TABLE IF NOT EXISTS accounts_receivable (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. TanJee Accounting: Chart of Accounts & General Ledger
+CREATE TABLE IF NOT EXISTS accounts_payable (
+    ap_id TEXT PRIMARY KEY,
+    po_id TEXT NOT NULL REFERENCES purchase_orders(po_id),
+    grn_id TEXT REFERENCES goods_receipt_notes(grn_id),
+    supplier_name TEXT NOT NULL,
+    due_date DATE NOT NULL,
+    amount NUMERIC NOT NULL,
+    paid_amount NUMERIC NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'UNPAID', -- 'UNPAID', 'PARTIAL', 'PAID', 'OVERDUE'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. TanGii (探吉) Accounting: Chart of Accounts & General Ledger
 CREATE TABLE IF NOT EXISTS accounts (
     account_code TEXT PRIMARY KEY, -- '1101' 現金, '1144' 應收帳款, '1201' 存貨, '2144' 應付帳款, '4111' 銷貨收入, '5111' 銷貨成本
     account_name TEXT NOT NULL,
     account_type TEXT NOT NULL,    -- 'ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'
     is_active INTEGER DEFAULT 1
 );
+
+-- Standard Chart of Accounts Seed (Taiwan GAAP / EAS)
+INSERT OR IGNORE INTO accounts (account_code, account_name, account_type) VALUES
+('1101', '現金', 'ASSET'),
+('1102', '銀行存款', 'ASSET'),
+('1144', '應收帳款', 'ASSET'),
+('1201', '存貨', 'ASSET'),
+('2144', '應付帳款', 'LIABILITY'),
+('2201', '銷項稅額', 'LIABILITY'),
+('3101', '業主資本', 'EQUITY'),
+('4111', '銷貨收入', 'REVENUE'),
+('5111', '銷貨成本', 'EXPENSE'),
+('6101', '營業費用', 'EXPENSE');
 
 CREATE TABLE IF NOT EXISTS journal_entries (
     entry_id TEXT PRIMARY KEY,
@@ -154,7 +179,7 @@ CREATE TABLE IF NOT EXISTS journal_lines (
     CHECK (debit >= 0 AND credit >= 0 AND (debit > 0 OR credit > 0))
 );
 
--- 10. DanLee CRM: Contacts, Deals, Quotes
+-- 10. LiLai (哩來) CRM: Contacts, Deals, Quotes
 CREATE TABLE IF NOT EXISTS crm_contacts (
     contact_id TEXT PRIMARY KEY,
     company_name TEXT NOT NULL,
