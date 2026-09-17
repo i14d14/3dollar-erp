@@ -8,9 +8,11 @@ from fastapi.templating import Jinja2Templates
 
 from src.channel_ui.web.demo_seed import seed_demo_data
 from src.channel_ui.web.routes.accounting import router as accounting_router
+from src.channel_ui.web.routes.crm import router as crm_router
 from src.channel_ui.web.routes.dashboard import router as dashboard_router
 from src.channel_ui.web.routes.inventory import router as inventory_router
 from src.channel_ui.web.routes.orders import router as orders_router
+
 from src.channel_ui.web.view_service import WebViewService
 from src.core.ports.event_bus_port import EventBusPort
 from src.extended_core.accounting.services.event_handlers import register_accounting_event_handlers
@@ -80,10 +82,27 @@ def format_user_error_message(detail: str) -> str:
     if m8:
         return f"訂單 {m8.group(1)} 已開立過發票，不可重複開立"
 
+    # CRM Domain Error Translations
+    if "Tax ID must be 8 digits" in s or "統一編號" in s:
+        return "統一編號格式錯誤：必須為 8 位純數字"
+    if "Contact not found" in s or "指定的客戶不存在" in s or "查無客戶" in s:
+        return "查無指定之客戶資料"
+    if "Deal not found" in s or "查無商機" in s:
+        return "查無指定之商機資料"
+    if "Quote not found" in s or "查無報價單" in s:
+        return "查無指定之報價單資料"
+    if "Quote with items required" in s or "缺乏有效報價單與明細" in s:
+        return "此商機尚未建立任何報價單明細，無法執行拋轉 ERP 銷售訂單"
+    if "Deal already converted" in s or "不可重複轉單" in s:
+        return "此商機先前已成功拋轉為 ERP 銷售訂單，不可重複轉單"
+    if "stage is locked" in s or "狀態已鎖定為贏單" in s:
+        return "商機已拋轉為 ERP 訂單，狀態已鎖定為贏單，不可任意變更"
+
     # Strip any trailing English tag in parentheses e.g. " (Insufficient available stock)"
     s = re.sub(r"\s*\([A-Za-z0-9_\- :.,]+\)$", "", s)
 
     return s
+
 
 
 def create_app(db: Optional[Database] = None, event_bus: Optional[EventBusPort] = None) -> FastAPI:
@@ -161,8 +180,10 @@ def create_app(db: Optional[Database] = None, event_bus: Optional[EventBusPort] 
     app.include_router(orders_router)
     app.include_router(inventory_router)
     app.include_router(accounting_router)
+    app.include_router(crm_router)
 
     return app
+
 
 
 app = create_app()

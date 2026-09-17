@@ -7,12 +7,12 @@
 ## 專案進度儀表板 (Dashboard)
 
 * **專案名稱**：3Dollar ERP (三圓科技產品架構複製)
-* **當前衝刺階段**：Day 3 完成，推進 Day 4 (哩來 CRM 前段商機)
+* **當前衝刺階段**：Day 4 完成，推進 Day 5 (LINE Bot 智能通路入口)
 * **研發策略模式**：雙軌制（青春版基準 MVP 交付優先，架構插槽預留樂觀完整版）
-* **整體完成度**：42.9% [████░░░░░░]
-* **當前焦點任務**：Day 4 CRM 前段商機（客戶主檔、四段商機管線、DOCX 範本套印與 PDF 產出、Web 看板切片）
+* **整體完成度**：57.1% [█████░░░░░]
+* **當前焦點任務**：Day 5 LINE Bot 智能通路入口（Webhook 簽名驗證、Flex Message 型錄與直接下單、查單）
 * **當前阻礙 (Blockers)**：無
-* **最後更新時間**：2026-09-16
+* **最後更新時間**：2026-09-17
 
 ---
 
@@ -42,12 +42,20 @@
 - [x] **Task 3.5**: 財務報表 Excel 原生串流匯出引擎（基於 xlsxwriter 產出專業排版之試算表與損益表）
 - [x] **Task 3.6**: 探吉 (TanGii) 會計記帳 Web GUI 垂直切片（Zero-Build SSR：`/accounting` 財務 KPI、試算表、損益表、帳齡分析與手動傳票輸入）
 
-### 後續衝刺清單 (Day 4 ~ Day 7 待啟動)
+### [x] Day 4: 哩來 (LiLai) CRM 前段商機 (Extended Core) - 已驗收
+> 規格詳細定義：[`ROADMAP.md#1-哩來-lilai-crm業務前段名片到成交`](file:///d:/3dollar_erp/ROADMAP.md#1-哩來-lilai-crm業務前段名片到成交)
+- [x] **Task 4.1**: 客戶主檔與聯絡人管理（統編 8 位數格式檢驗、公司與窗口建檔、防呆與資料模型擴充）
+- [x] **Task 4.2**: 四段商機管線狀態機（LEAD $\rightarrow$ DISCOVERY $\rightarrow$ PROPOSAL $\rightarrow$ WON / LOST 剛性推進與已轉單鎖定保護）
+- [x] **Task 4.3**: 報價單與文件套印中心（python-docx 原生產生 Word 報價單範本、PyMuPDF 原生產生防竄改 A4 報價單 PDF、多品項明細與稅額試算）
+- [x] **Task 4.4**: 贏單 (WON) 一鍵穿透拋轉 ERP 銷售訂單（呼叫 OrderService 建立 CRM 通路 DRAFT 銷售訂單、converted_order_id 雙向關聯、報價單自動 ACCEPTED）
+- [x] **Task 4.5**: 哩來 CRM 營運管理 Web GUI 垂直切片（Zero-Build SSR：`/crm` 四欄式商機看板、客戶主檔分頁、報價單 DOCX/PDF 串流下載、一鍵轉 ERP 訂單）
+
+### 後續衝刺清單 (Day 5 ~ Day 7 待啟動)
 > 具體業務規格、驗收標準與雙軌裁切定義嚴格收錄於 [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md)，此處不展開單一行標題以杜絕假性滿足：
-* **Day 4**: 哩來 (LiLai) CRM 前段商機（客戶主檔、四段商機管線、DOCX 範本套印與 PDF 產出、Web 看板切片）
 * **Day 5**: LINE Bot 智能通路入口（Webhook 簽名驗證、Flex Message 型錄與直接下單、查單）
 * **Day 6**: AI 增強外掛與檔案自動化（BOM 表 Excel 解析比價、原生 PDF 電子發票抽取、報表匯出）
 * **Day 7**: 全鏈路端到端整合與驗收（商機 $\rightarrow$ 報價 $\rightarrow$ 下單 $\rightarrow$ 出貨扣庫 $\rightarrow$ 會計出表 E2E 驗收與種子資料）
+
 
 ---
 
@@ -73,4 +81,6 @@
 | 2026-09-16 | 品牌與模組全域防侵權重命名 | 完成「三元」$\rightarrow$「三圓」、「TanJee」$\rightarrow$「探吉 (TanGii)」、「DanLee」$\rightarrow$「哩來 (LiLai)」全庫替換（SSOT 文件、資料庫模型註解、UI 視圖範本、報表匯出預設抬頭與自動化測試），全套測試 42/42 PASS | PASS |
 | 2026-09-17 | 探吉會計驗收與全域錯誤中文化 | 完成帳齡天數色彩語意配套、會計試算表累計機制驗證、全域使用者錯誤訊息繁體中文化雙層防禦（AGENTS.md 守則固化、Serena 永久記憶、app.py 安全網、核心服務全面在地化），測試 42/42 PASS | PASS |
 | 2026-09-17 | EventBus 單例分裂根除與 DI 重構 | 核心領域服務 (__init__) 移除預設 default_event_bus 改為強制顯式注入；Web 路由全面採用 FastAPI Depends DI 提供者；tools/check_boundaries.py 加入 AST 規則嚴格禁止 default_event_bus 匯入；新增端到端跨層整合測試 (test_cross_layer_event_e2e.py)，驗收 44/44 PASS | PASS |
+| 2026-09-17 | Day 4 (哩來 CRM 前段商機) | 完成客戶主檔 (統編8碼校驗)、四段商機管線狀態機 (LEAD $\rightarrow$ DISCOVERY $\rightarrow$ PROPOSAL $\rightarrow$ WON/LOST)、python-docx 原生產生 Word 報價單與 PyMuPDF 原生產生防竄改 A4 報價單 PDF、贏單一鍵穿透拋轉 ERP 銷售訂單 (SO)、Zero-Build SSR Web 管理後台切片 (/crm 看板與客戶清冊)、全域繁體中文錯誤防護與展示資料種子，全套測試與架構邊界守護全數通過 (55/55 PASS) | PASS |
+
 

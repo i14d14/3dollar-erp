@@ -166,3 +166,56 @@ class AgingSummaryViewDTO:
     days_60_plus_formatted: str
     items: List[AgingItemViewDTO]
 
+
+# LiLai (哩來) CRM View DTOs
+@dataclass
+class CrmSummaryDTO:
+    total_deals_count: int
+    pipeline_value_formatted: str
+    active_deals_count: int
+    won_deals_count: int
+    won_revenue_formatted: str
+    contacts_count: int
+
+
+@dataclass
+class DealCardDTO:
+    deal_id: str
+    contact_id: str
+    company_name: str
+    contact_name: str
+    title: str
+    stage: str
+    stage_label: str
+    stage_badge_class: str
+    expected_amount_formatted: str
+    converted_order_id: Optional[str] = None
+    latest_quote_id: Optional[str] = None
+    latest_quote_number: Optional[str] = None
+    can_advance_discovery: bool = False
+    can_advance_proposal: bool = False
+    can_convert_order: bool = False
+    can_mark_lost: bool = False
+    can_reopen: bool = False
+
+
+@dataclass
+class ContactRowDTO:
+    contact_id: str
+    company_name: str
+    tax_id: Optional[str]
+    contact_name: str
+    email: Optional[str]
+    phone: Optional[str]
+    deal_count: int
+
+
+@dataclass
+class CrmKanbanDTO:
+    lead_deals: List[DealCardDTO]
+    discovery_deals: List[DealCardDTO]
+    proposal_deals: List[DealCardDTO]
+    won_deals: List[DealCardDTO]
+    lost_deals: List[DealCardDTO]
+
+

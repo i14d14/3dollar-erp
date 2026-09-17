@@ -8,7 +8,9 @@ from src.core.services.inventory_service import InventoryService
 from src.core.services.invoice_service import InvoiceService
 from src.core.services.order_service import OrderService
 from src.extended_core.accounting.services.accounting_service import AccountingService
+from src.extended_core.crm.services.crm_service import CrmService
 from src.shared.database import Database
+
 
 
 def get_db(request: Request) -> Database:
@@ -59,3 +61,12 @@ def get_accounting_service(
 ) -> AccountingService:
     """Dependency provider for AccountingService wired to the active app db."""
     return AccountingService(db=db)
+
+
+def get_crm_service(
+    db: Database = Depends(get_db),
+    order_service: OrderService = Depends(get_order_service),
+) -> CrmService:
+    """Dependency provider for CrmService wired to the active app db and order service."""
+    return CrmService(db=db, order_service=order_service)
+

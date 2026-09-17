@@ -1,0 +1,109 @@
+<div class="bg-white rounded-xl p-3.5 border border-slate-200/90 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between gap-3 text-xs">
+  <div>
+    <!-- Card Header: Customer & Stage Badge -->
+    <div class="flex items-start justify-between gap-1 mb-1.5">
+      <div class="font-medium text-slate-700 truncate" title="{{ deal.company_name }} ({{ deal.contact_name }})">
+        <span class="text-slate-400">🏢</span> {{ deal.company_name }}
+      </div>
+      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 {{ deal.stage_badge_class }}">
+        {{ deal.stage_label }}
+      </span>
+    </div>
+
+    <!-- Title & Expected Amount -->
+    <div class="font-bold text-slate-900 text-sm leading-snug mb-1">
+      {{ deal.title }}
+    </div>
+    <div class="flex items-center justify-between mt-2">
+      <div class="text-[10px] font-mono text-slate-400">{{ deal.deal_id }}</div>
+      <div class="text-xs font-bold text-indigo-600 bg-indigo-50/80 px-2 py-0.5 rounded-md border border-indigo-100">
+        {{ deal.expected_amount_formatted }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Document & Quotation Section -->
+  {% if deal.latest_quote_id %}
+  <div class="p-2 bg-slate-50 rounded-lg border border-slate-200/70 space-y-1.5">
+    <div class="flex items-center justify-between text-[11px]">
+      <span class="font-mono text-slate-600 font-semibold">📄 {{ deal.latest_quote_number }}</span>
+      <span class="text-[10px] text-slate-400">商業報價單</span>
+    </div>
+    <div class="flex items-center gap-1.5 pt-0.5">
+      <a href="/crm/quotes/{{ deal.latest_quote_id }}/docx" download class="flex-1 py-1 text-center text-[11px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors">
+        📥 DOCX
+      </a>
+      <a href="/crm/quotes/{{ deal.latest_quote_id }}/pdf" target="_blank" class="flex-1 py-1 text-center text-[11px] font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors">
+        📑 預覽 PDF
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Converted ERP Order Badge -->
+  {% if deal.converted_order_id %}
+  <div class="p-2 bg-emerald-50 rounded-lg border border-emerald-200 flex items-center justify-between text-[11px]">
+    <div class="flex items-center gap-1.5 font-bold text-emerald-800">
+      <span>🎉</span> ERP 銷售訂單
+    </div>
+    <a href="/orders" class="font-mono font-bold text-emerald-700 hover:text-emerald-900 underline flex items-center gap-0.5">
+      {{ deal.converted_order_id }} ➜
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Action Progression Buttons -->
+  <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5">
+    <div class="flex items-center gap-1 flex-wrap">
+      {% if deal.can_advance_discovery %}
+      <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" class="inline">
+        <input type="hidden" name="stage" value="DISCOVERY">
+        <button type="submit" class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 transition">
+          進展洽談 ➜
+        </button>
+      </form>
+      {% endif %}
+
+      {% if deal.can_advance_proposal %}
+      <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" class="inline">
+        <input type="hidden" name="stage" value="PROPOSAL">
+        <button type="submit" class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition">
+          進展報價 ➜
+        </button>
+      </form>
+      {% endif %}
+
+      {% if deal.stage in ['DISCOVERY', 'PROPOSAL'] and not deal.converted_order_id %}
+      <button type="button" onclick="openQuoteModal('{{ deal.deal_id }}', '{{ deal.title }}')" class="px-2 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">
+        ＋ 報價單
+      </button>
+      {% endif %}
+
+      {% if deal.can_convert_order %}
+      <form action="/crm/deals/{{ deal.deal_id }}/convert-to-order" method="POST" class="inline">
+        <button type="submit" class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition">
+          ⚡ 贏單轉 ERP
+        </button>
+      </form>
+      {% endif %}
+
+      {% if deal.can_reopen %}
+      <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" class="inline">
+        <input type="hidden" name="stage" value="LEAD">
+        <button type="submit" class="px-2 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">
+          ↺ 重啟商機
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if deal.can_mark_lost %}
+    <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" class="inline">
+      <input type="hidden" name="stage" value="LOST">
+      <button type="submit" class="text-[10px] text-slate-400 hover:text-rose-600 transition" onclick="return confirm('確定將此商機標記為輸單嗎？')">
+        輸單 ✕
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>

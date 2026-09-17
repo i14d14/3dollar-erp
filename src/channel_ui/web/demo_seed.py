@@ -10,6 +10,8 @@ from src.core.services.invoice_service import InvoiceService
 from src.core.services.order_service import OrderService
 from src.core.services.procurement_service import ProcurementService
 from src.extended_core.accounting.services.accounting_service import AccountingService
+from src.extended_core.crm.models import DealStage
+from src.extended_core.crm.services.crm_service import CrmService
 from src.shared.database import Database
 
 
@@ -20,6 +22,8 @@ def seed_demo_data(db: Database, event_bus: EventBusPort) -> None:
     with db.transaction() as conn:
         wh_count = conn.execute("SELECT COUNT(*) FROM warehouses").fetchone()[0]
         je_count = conn.execute("SELECT COUNT(*) FROM journal_entries").fetchone()[0]
+        crm_count = conn.execute("SELECT COUNT(*) FROM crm_contacts").fetchone()[0]
+
 
     inventory_service = InventoryService(db=db)
     order_service = OrderService(db=db, inventory_service=inventory_service, event_bus=event_bus)
@@ -281,3 +285,103 @@ def seed_demo_data(db: Database, event_bus: EventBusPort) -> None:
                 ("1101", Decimal("0.0"), Decimal("3200.0")),
             ],
         )
+
+    # 3. LiLai (哩來) CRM Seeding (if CRM contacts empty)
+    if crm_count == 0:
+        crm_service = CrmService(db=db, order_service=order_service)
+
+        # Check existing active products
+        with db.transaction() as conn:
+            prods = conn.execute(
+                "SELECT sku, selling_price FROM products WHERE is_active = 1 ORDER BY sku ASC"
+            ).fetchall()
+
+        if not prods:
+            inventory_service.create_product(
+                sku="SKU-PRO-01",
+                name="智慧旗艦終端機",
+                base_unit="PCS",
+                cost_price=Decimal("1500.0"),
+                selling_price=Decimal("2500.0"),
+                safety_stock=20,
+            )
+            prods = [{"sku": "SKU-PRO-01", "selling_price": 2500.0}]
+
+        sku_1 = prods[0]["sku"]
+        price_1 = Decimal(str(prods[0]["selling_price"]))
+        sku_2 = prods[1]["sku"] if len(prods) > 1 else sku_1
+        price_2 = Decimal(str(prods[1]["selling_price"])) if len(prods) > 1 else price_1
+
+        # A. Create Contacts
+        c1 = crm_service.create_contact(
+            company_name="宏達數位科技有限公司",
+            contact_name="陳經理",
+            tax_id="24567890",
+            email="service@htc-digital.tw",
+            phone="02-2345-6789",
+        )
+        c2 = crm_service.create_contact(
+            company_name="聯發資通企業股份有限公司",
+            contact_name="林處長",
+            tax_id="87654321",
+            email="lin@mtk-tele.tw",
+            phone="03-578-9012",
+        )
+        c3 = crm_service.create_contact(
+            company_name="台積創新技術服務公司",
+            contact_name="張博士",
+            tax_id="11223344",
+            email="chang@tsm-tech.tw",
+            phone="03-667-7889",
+        )
+
+        # B. Deal 1: Proposal stage with formal Quote and items
+        d1 = crm_service.create_deal(
+            contact_id=c1.contact_id,
+            title="2026 辦公室智慧終端硬體升級案",
+            expected_amount=price_1 * Decimal("10.0"),
+            stage=DealStage.DISCOVERY,
+        )
+        quote_items_d1 = [(sku_1, Decimal("10.0"), price_1)]
+        if sku_2 != sku_1:
+            quote_items_d1.append((sku_2, Decimal("5.0"), price_2))
+
+        crm_service.create_quote(
+            deal_id=d1.deal_id,
+            items=quote_items_d1,
+            valid_days=30,
+        )
+
+        # C. Deal 2: Discovery stage
+        crm_service.create_deal(
+            contact_id=c2.contact_id,
+            title="研發廠區無線溫濕度傳感監測案",
+            expected_amount=price_2 * Decimal("8.0"),
+            stage=DealStage.DISCOVERY,
+        )
+
+        # D. Deal 3: Lead stage
+        crm_service.create_deal(
+            contact_id=c3.contact_id,
+            title="企業總部高速傳輸擴充底座採購評估",
+            expected_amount=price_1 * Decimal("20.0"),
+            stage=DealStage.LEAD,
+        )
+
+        # E. Deal 4: Converted Won deal
+        d4 = crm_service.create_deal(
+            contact_id=c1.contact_id,
+            title="門市展示用智慧終端試產案",
+            expected_amount=price_1 * Decimal("2.0"),
+            stage=DealStage.DISCOVERY,
+        )
+        crm_service.create_quote(
+            deal_id=d4.deal_id,
+            items=[
+                (sku_1, Decimal("2.0"), price_1),
+            ],
+            valid_days=14,
+        )
+        crm_service.convert_deal_to_erp_order(d4.deal_id)
+
+

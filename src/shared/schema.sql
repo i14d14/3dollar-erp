@@ -211,3 +211,13 @@ CREATE TABLE IF NOT EXISTS crm_quotes (
     status TEXT NOT NULL DEFAULT 'DRAFT', -- 'DRAFT', 'SENT', 'ACCEPTED', 'REJECTED'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS crm_quote_items (
+    item_id TEXT PRIMARY KEY,
+    quote_id TEXT NOT NULL REFERENCES crm_quotes(quote_id) ON DELETE CASCADE,
+    sku TEXT NOT NULL REFERENCES products(sku),
+    qty NUMERIC NOT NULL,
+    unit_price NUMERIC NOT NULL,
+    subtotal NUMERIC NOT NULL
+);
+

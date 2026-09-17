@@ -39,7 +39,9 @@ python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
 | **訂單與出貨作業** | [`http://127.0.0.1:8000/orders`](http://127.0.0.1:8000/orders) | 管理銷售訂單（SO），支援 HTMX 無刷新「一鍵鎖庫」、「一鍵出貨」、「開立發票」與原生 PDF 下載。 |
 | **多倉庫存與流水** | [`http://127.0.0.1:8000/inventory`](http://127.0.0.1:8000/inventory) | 主倉與門市倉存量對照、原子性調撥表單、Append-Only 雙記帳庫存異動流水（Stock Ledger）。 |
 | **探吉 會計記帳** | [`http://127.0.0.1:8000/accounting`](http://127.0.0.1:8000/accounting) | 總分類帳試算表、多步驟損益表、應收 (AR)/應付 (AP) 4 區間帳齡分析、借貸平衡傳票登錄、款項沖銷與 Excel (.xlsx) 匯出。 |
+| **哩來 CRM 商機** | [`http://127.0.0.1:8000/crm`](http://127.0.0.1:8000/crm) | 四段商機管線看板（LEAD $\rightarrow$ DISCOVERY $\rightarrow$ PROPOSAL $\rightarrow$ WON/LOST）、客戶主檔管理、多品項商業報價單產出、Word (.docx) / 原生防竄改 PDF 串流下載、贏單一鍵轉 ERP 銷售訂單。 |
 | **API 互動規格文件** | [`http://127.0.0.1:8000/docs`](http://127.0.0.1:8000/docs) | 檢視所有 FastAPI 路由、Swagger UI 互動式測試與資料傳輸物件（View DTO）綱要。 |
+
 
 ---
 
@@ -95,6 +97,21 @@ python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
    * 點選「📖 借貸日記帳簿」頁籤，提供手動傳票輸入表單。
    * 若借方總額不等於貸方總額（例如借 10,000 / 貸 9,000），系統立即攔截並彈出紅底錯誤通知橫幅，嚴格禁止失衡傳票寫入總帳。
 
+### 4. 哩來 CRM 前段商機與文件套印中心 (LiLai CRM Workflows)
+進入 **「哩來 CRM 商機」**（`/crm`）：
+1. **建立客戶主檔與統編格式防呆**：
+   * **動作 (Action)**：點擊頂部 **「👤 新增客戶」** 按鈕，於彈窗輸入公司名稱（如 `宏達數位科技有限公司`）、8 位數統一編號（如 `24567890`）與聯絡人。若故意輸入非 8 碼數字（如 `1234`）並提交。
+   * **預期成果 (Expected Outcome)**：若統編格式不符，系統立即以 OOB 紅底橫幅提示 `⚠️ 執行失敗: 統一編號格式錯誤：必須為 8 位純數字`；輸入正確則成功建檔，客戶清冊即時更新。
+2. **四段商機管線推進 (LEAD ➜ DISCOVERY ➜ PROPOSAL ➜ WON / LOST)**：
+   * **動作 (Action)**：於看板點擊 **「✨ 建立新商機」**，選取目標客戶並輸入案名；在卡片上依序點擊 **「進展洽談 ➜」** 與 **「進展報價 ➜」**。
+   * **預期成果 (Expected Outcome)**：商機卡片即時於對應欄位間平滑推進，狀態徽章與階段即時更新。
+3. **商業報價單試算與 Word (.docx) / PDF 套印下載**：
+   * **動作 (Action)**：於商機卡片點擊 **「＋ 報價單」**，選取商品規格、輸入採購數量與報價單價，點擊「產出報價單」；產出後分別點擊 **「📥 DOCX」** 與 **「📑 預覽 PDF」**。
+   * **預期成果 (Expected Outcome)**：系統依多品項自動試算未稅合計、5% 營業稅與含稅總計，並將商機自動推進至 `PROPOSAL`；點擊下載可取得專業排版之 Word 報價草稿 `.docx` 檔案，以及直接於瀏覽器預覽含防竄改文字層與簽署蓋章欄之標準 A4 報價單 `.pdf`。
+4. **贏單 (WON) 一鍵穿透轉 ERP 銷售訂單 (SO)**：
+   * **動作 (Action)**：於報價階段之商機卡片點擊 **「⚡ 贏單轉 ERP」**。
+   * **預期成果 (Expected Outcome)**：系統透過原子性事務調用核心 `OrderService`，自動生成 CRM 通路之 `DRAFT` 銷售訂單（`SO-XXXX`），商機卡片即時移入「結案」欄位並標記為 `WON`，顯示綠色 `SO-XXXX ➜` 訂單標籤，點擊可直接跳轉至 `/orders` 進行後續鎖庫、出貨與開立發票作業。
+
 ---
 
 ## 四、 自動化測試與架構驗收 (Testing & Verification)
@@ -108,11 +125,14 @@ python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
 python -m unittest discover -s tests
 ```
 
-* **預期成果**：全部 42+ 項測試案例執行通過（`OK`），包括：
+* **預期成果**：全部 55 項測試案例執行通過（`OK`），包括：
   * Day 1 資料庫模型與邊界測試
   * Day 2 庫存流水、採購移動平均成本、訂單出貨、MIG 3.2.1 電子發票與四單勾稽測試
   * Day 3 探吉 (TanGii) 會計借貸平衡、EAS 科目表、ERP 事件自動入帳、AR/AP 帳齡矩陣、款項沖銷、xlsxwriter 試算表/損益表匯出
+  * Day 4 哩來 (LiLai) CRM 客戶主檔與統編校驗、四段商機管線推進、python-docx / PyMuPDF 報價單套印、贏單一鍵轉 ERP 銷售訂單與 `/crm` Web 看板切片測試
   * Web GUI 管理後台端點、HTMX 局部抽換、PDF 串流與 Excel 下載整合測試
+
+
 
 ### 2. 執行單獨架構邊界檢查 (Architecture Fitness Function)
 確保系統嚴格遵守由外向內的單向相依性，杜絕底層反向引用外圍：

@@ -1,13 +1,17 @@
 from __future__ import annotations
 import datetime
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.channel_ui.web.dtos import (
     AccountingKPIsDTO,
     AgingItemViewDTO,
     AgingSummaryViewDTO,
+    ContactRowDTO,
+    CrmKanbanDTO,
+    CrmSummaryDTO,
     DashboardSummaryDTO,
+    DealCardDTO,
     IncomeStatementViewDTO,
     InventoryStockDTO,
     JournalEntryViewDTO,
@@ -29,6 +33,15 @@ STATUS_BADGES: Dict[str, str] = {
     "COMPLETED": "bg-emerald-100 text-emerald-700 border border-emerald-300",
     "CANCELLED": "bg-rose-100 text-rose-700 border border-rose-300",
 }
+
+CRM_STAGE_BADGES: Dict[str, Tuple[str, str]] = {
+    "LEAD": ("潛在商機", "bg-slate-100 text-slate-700 border border-slate-300"),
+    "DISCOVERY": ("需求洽談", "bg-sky-50 text-sky-700 border border-sky-200"),
+    "PROPOSAL": ("方案報價", "bg-amber-50 text-amber-700 border border-amber-200"),
+    "WON": ("贏單成交", "bg-emerald-50 text-emerald-700 border border-emerald-300"),
+    "LOST": ("輸單結案", "bg-rose-50 text-rose-700 border border-rose-200"),
+}
+
 
 
 class WebViewService:
@@ -485,4 +498,162 @@ class WebViewService:
                 }
                 for r in rows
             ]
+
+    # =========================================================================
+    # LiLai (哩來) CRM Web Queries
+    # =========================================================================
+
+    def get_crm_summary(self) -> CrmSummaryDTO:
+        with self.db.transaction() as conn:
+            row_total = conn.execute("SELECT COUNT(*) FROM crm_deals").fetchone()
+            total_deals = row_total[0] if row_total else 0
+
+            row_pipe = conn.execute(
+                "SELECT COALESCE(SUM(expected_amount), 0), COUNT(*) FROM crm_deals WHERE stage IN ('LEAD', 'DISCOVERY', 'PROPOSAL')"
+            ).fetchone()
+            pipe_val = Decimal(str(row_pipe[0])) if row_pipe else Decimal("0.0")
+            active_deals = row_pipe[1] if row_pipe else 0
+
+            row_won = conn.execute(
+                "SELECT COALESCE(SUM(expected_amount), 0), COUNT(*) FROM crm_deals WHERE stage = 'WON'"
+            ).fetchone()
+            won_val = Decimal(str(row_won[0])) if row_won else Decimal("0.0")
+            won_deals = row_won[1] if row_won else 0
+
+            row_cust = conn.execute("SELECT COUNT(*) FROM crm_contacts").fetchone()
+            contacts_count = row_cust[0] if row_cust else 0
+
+        return CrmSummaryDTO(
+            total_deals_count=total_deals,
+            pipeline_value_formatted=f"NT$ {pipe_val:,.2f}",
+            active_deals_count=active_deals,
+            won_deals_count=won_deals,
+            won_revenue_formatted=f"NT$ {won_val:,.2f}",
+            contacts_count=contacts_count,
+        )
+
+    def get_crm_kanban(self) -> CrmKanbanDTO:
+        with self.db.transaction() as conn:
+            deals_rows = conn.execute(
+                """
+                SELECT d.deal_id, d.contact_id, d.title, d.stage, d.expected_amount, d.converted_order_id,
+                       c.company_name, c.contact_name
+                FROM crm_deals d
+                JOIN crm_contacts c ON d.contact_id = c.contact_id
+                ORDER BY d.created_at DESC
+                """
+            ).fetchall()
+
+            # Pre-fetch latest quote for each deal
+            quotes_rows = conn.execute(
+                """
+                SELECT deal_id, quote_id, quote_number
+                FROM crm_quotes
+                ORDER BY created_at DESC
+                """
+            ).fetchall()
+            latest_quote_map: Dict[str, Tuple[str, str]] = {}
+            for qr in quotes_rows:
+                did = qr["deal_id"]
+                if did not in latest_quote_map:
+                    latest_quote_map[did] = (qr["quote_id"], qr["quote_number"])
+
+        lead_deals: List[DealCardDTO] = []
+        discovery_deals: List[DealCardDTO] = []
+        proposal_deals: List[DealCardDTO] = []
+        won_deals: List[DealCardDTO] = []
+        lost_deals: List[DealCardDTO] = []
+
+        for r in deals_rows:
+            deal_id = r["deal_id"]
+            stage = r["stage"]
+            converted_order_id = r["converted_order_id"]
+            expected_amt = Decimal(str(r["expected_amount"]))
+            quote_info = latest_quote_map.get(deal_id)
+            quote_id = quote_info[0] if quote_info else None
+            quote_num = quote_info[1] if quote_info else None
+
+            label, badge_class = CRM_STAGE_BADGES.get(
+                stage, (stage, "bg-slate-100 text-slate-700")
+            )
+
+            card = DealCardDTO(
+                deal_id=deal_id,
+                contact_id=r["contact_id"],
+                company_name=r["company_name"],
+                contact_name=r["contact_name"],
+                title=r["title"],
+                stage=stage,
+                stage_label=label,
+                stage_badge_class=badge_class,
+                expected_amount_formatted=f"NT$ {expected_amt:,.2f}",
+                converted_order_id=converted_order_id,
+                latest_quote_id=quote_id,
+                latest_quote_number=quote_num,
+                can_advance_discovery=(stage == "LEAD"),
+                can_advance_proposal=(stage in ("LEAD", "DISCOVERY")),
+                can_convert_order=(stage == "PROPOSAL" and not converted_order_id and quote_id is not None),
+                can_mark_lost=(stage in ("LEAD", "DISCOVERY", "PROPOSAL")),
+                can_reopen=(stage == "LOST"),
+            )
+
+            if stage == "LEAD":
+                lead_deals.append(card)
+            elif stage == "DISCOVERY":
+                discovery_deals.append(card)
+            elif stage == "PROPOSAL":
+                proposal_deals.append(card)
+            elif stage == "WON":
+                won_deals.append(card)
+            elif stage == "LOST":
+                lost_deals.append(card)
+
+        return CrmKanbanDTO(
+            lead_deals=lead_deals,
+            discovery_deals=discovery_deals,
+            proposal_deals=proposal_deals,
+            won_deals=won_deals,
+            lost_deals=lost_deals,
+        )
+
+    def list_contacts_with_stats(self) -> List[ContactRowDTO]:
+        with self.db.transaction() as conn:
+            rows = conn.execute(
+                """
+                SELECT c.contact_id, c.company_name, c.tax_id, c.contact_name, c.email, c.phone,
+                       COUNT(d.deal_id) as deal_count
+                FROM crm_contacts c
+                LEFT JOIN crm_deals d ON c.contact_id = d.contact_id
+                GROUP BY c.contact_id
+                ORDER BY c.created_at DESC
+                """
+            ).fetchall()
+            return [
+                ContactRowDTO(
+                    contact_id=r["contact_id"],
+                    company_name=r["company_name"],
+                    tax_id=r["tax_id"],
+                    contact_name=r["contact_name"],
+                    email=r["email"],
+                    phone=r["phone"],
+                    deal_count=r["deal_count"],
+                )
+                for r in rows
+            ]
+
+    def list_active_products_for_quote(self) -> List[Dict[str, Any]]:
+        with self.db.transaction() as conn:
+            rows = conn.execute(
+                "SELECT sku, name, base_unit, selling_price FROM products WHERE is_active = 1 ORDER BY sku ASC"
+            ).fetchall()
+            return [
+                {
+                    "sku": r["sku"],
+                    "name": r["name"],
+                    "unit": r["base_unit"],
+                    "price": float(r["selling_price"]),
+                }
+                for r in rows
+            ]
+
 
