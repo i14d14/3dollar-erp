@@ -70,3 +70,99 @@ class StockLedgerRowDTO:
     reference_id: str
     notes: str
     created_at: str
+
+
+# TanGii (探吉) Accounting View DTOs
+@dataclass
+class AccountingKPIsDTO:
+    revenue_formatted: str
+    cogs_formatted: str
+    gross_profit_formatted: str
+    net_profit_formatted: str
+    ar_outstanding_formatted: str
+    ap_outstanding_formatted: str
+
+
+@dataclass
+class JournalLineViewDTO:
+    account_code: str
+    account_name: str
+    debit_formatted: str
+    credit_formatted: str
+
+
+@dataclass
+class JournalEntryViewDTO:
+    entry_id: str
+    entry_date: str
+    source_event: str
+    source_event_badge: str
+    reference_id: str
+    description: str
+    lines: List[JournalLineViewDTO]
+    total_debit_formatted: str
+    total_credit_formatted: str
+    is_balanced: bool
+
+
+@dataclass
+class TrialBalanceRowDTO:
+    account_code: str
+    account_name: str
+    account_type: str
+    account_type_badge: str
+    debit_total_formatted: str
+    credit_total_formatted: str
+    balance_debit_formatted: str
+    balance_credit_formatted: str
+
+
+@dataclass
+class TrialBalanceViewDTO:
+    as_of_date: str
+    rows: List[TrialBalanceRowDTO]
+    total_debit_formatted: str
+    total_credit_formatted: str
+    is_balanced: bool
+
+
+@dataclass
+class IncomeStatementViewDTO:
+    period_str: str
+    revenue_formatted: str
+    cogs_formatted: str
+    gross_profit_formatted: str
+    gross_margin_pct: str
+    operating_expenses_formatted: str
+    net_profit_formatted: str
+    net_margin_pct: str
+    is_profitable: bool
+
+
+@dataclass
+class AgingItemViewDTO:
+    item_id: str
+    reference_id: str
+    partner_name: str
+    amount_formatted: str
+    paid_amount_formatted: str
+    outstanding_formatted: str
+    due_date: str
+    days_overdue: int
+    days_overdue_class: str
+    bucket: str
+    bucket_badge_class: str
+    status: str
+    can_settle: bool
+
+
+@dataclass
+class AgingSummaryViewDTO:
+    report_type: str  # "應收帳款 (AR)" or "應付帳款 (AP)"
+    total_outstanding_formatted: str
+    current_amount_formatted: str
+    days_1_30_formatted: str
+    days_31_60_formatted: str
+    days_60_plus_formatted: str
+    items: List[AgingItemViewDTO]
+

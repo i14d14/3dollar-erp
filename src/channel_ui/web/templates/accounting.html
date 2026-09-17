@@ -1,0 +1,553 @@
+{% extends "base.html" %}
+
+{% block title %}探吉 會計與記帳系統 - 3Dollar ERP{% endblock %}
+{% block header_title %}探吉 會計與記帳系統 (TanGii Accounting){% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- 1. Top Financial KPIs Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <!-- Revenue -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">本期營業收入</div>
+        <div class="text-2xl font-bold text-slate-900 mt-1 font-mono">{{ kpis.revenue_formatted }}</div>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
+        📈
+      </div>
+    </div>
+
+    <!-- Gross Profit -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">營業毛利</div>
+        <div class="text-2xl font-bold text-indigo-600 mt-1 font-mono">{{ kpis.gross_profit_formatted }}</div>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-lg">
+        💰
+      </div>
+    </div>
+
+    <!-- Net Profit -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">本期營業淨利</div>
+        <div class="text-2xl font-bold text-slate-900 mt-1 font-mono">{{ kpis.net_profit_formatted }}</div>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-lg">
+        📊
+      </div>
+    </div>
+
+    <!-- Outstanding AR -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">應收帳款未收 (AR)</div>
+        <div class="text-2xl font-bold text-amber-600 mt-1 font-mono">{{ kpis.ar_outstanding_formatted }}</div>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">
+        🧾
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Sub-Navigation Tabs -->
+  <div class="border-b border-slate-200">
+    <nav class="flex space-x-6">
+      <a href="/accounting?tab=trial_balance"
+         class="pb-3 text-sm font-semibold border-b-2 transition-colors {% if active_tab == 'trial_balance' %}border-indigo-600 text-indigo-600{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300{% endif %}">
+        ⚖️ 會計試算表 (Trial Balance)
+      </a>
+      <a href="/accounting?tab=income_statement"
+         class="pb-3 text-sm font-semibold border-b-2 transition-colors {% if active_tab == 'income_statement' %}border-indigo-600 text-indigo-600{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300{% endif %}">
+        📑 即時損益表 (Income Statement)
+      </a>
+      <a href="/accounting?tab=aging"
+         class="pb-3 text-sm font-semibold border-b-2 transition-colors {% if active_tab == 'aging' %}border-indigo-600 text-indigo-600{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300{% endif %}">
+        ⏳ 應收/應付帳齡分析 (Aging)
+      </a>
+      <a href="/accounting?tab=journal"
+         class="pb-3 text-sm font-semibold border-b-2 transition-colors {% if active_tab == 'journal' %}border-indigo-600 text-indigo-600{% else %}border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300{% endif %}">
+        📖 借貸日記帳簿 (Journal Entries)
+      </a>
+    </nav>
+  </div>
+
+  <!-- 3. Tab Contents -->
+
+  <!-- TAB 1: 會計試算表 (Trial Balance) -->
+  {% if active_tab == 'trial_balance' %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+      <div>
+        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <span>會計總分類帳試算表</span>
+          {% if trial_balance.is_balanced %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+            ✓ 借貸嚴格平衡
+          </span>
+          {% else %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-300">
+            ⚠️ 借貸失衡異常
+          </span>
+          {% endif %}
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">基準日期：{{ trial_balance.as_of_date }} • 遵循 EAS 商業會計借貸恆等式 $\sum Dr = \sum Cr$</p>
+      </div>
+
+      <a href="/accounting/export/trial-balance.xlsx"
+         class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        匯出 Excel 試算表 (.xlsx)
+      </a>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-xs">
+        <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 uppercase tracking-wider">
+          <tr>
+            <th class="py-3 px-4 w-28">科目代碼</th>
+            <th class="py-3 px-4">科目名稱</th>
+            <th class="py-3 px-4 w-28">類別</th>
+            <th class="py-3 px-4 text-right">借方發生累計</th>
+            <th class="py-3 px-4 text-right">貸方發生累計</th>
+            <th class="py-3 px-4 text-right bg-slate-200/50">借方餘額 (Debit)</th>
+            <th class="py-3 px-4 text-right bg-slate-200/50">貸方餘額 (Credit)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          {% for row in trial_balance.rows %}
+          <tr class="hover:bg-slate-50/80 transition-colors">
+            <td class="py-3 px-4 font-mono font-medium text-slate-800">{{ row.account_code }}</td>
+            <td class="py-3 px-4 font-medium text-slate-900">{{ row.account_name }}</td>
+            <td class="py-3 px-4">
+              <span class="inline-block px-2 py-0.5 text-xs rounded font-medium {{ row.account_type_badge }}">
+                {{ row.account_type }}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-right font-mono text-slate-600">{{ row.debit_total_formatted }}</td>
+            <td class="py-3 px-4 text-right font-mono text-slate-600">{{ row.credit_total_formatted }}</td>
+            <td class="py-3 px-4 text-right font-mono font-semibold text-slate-900 bg-slate-50/50">{{ row.balance_debit_formatted }}</td>
+            <td class="py-3 px-4 text-right font-mono font-semibold text-slate-900 bg-slate-50/50">{{ row.balance_credit_formatted }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="bg-slate-100 border-t-2 border-slate-300 font-bold text-slate-900">
+          <tr>
+            <td colspan="5" class="py-3 px-4 text-center tracking-wide uppercase">合 計 (Total)</td>
+            <td class="py-3 px-4 text-right font-mono text-sm text-indigo-700 bg-indigo-50/40 border-b-4 border-double border-indigo-600">
+              {{ trial_balance.total_debit_formatted }}
+            </td>
+            <td class="py-3 px-4 text-right font-mono text-sm text-indigo-700 bg-indigo-50/40 border-b-4 border-double border-indigo-600">
+              {{ trial_balance.total_credit_formatted }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- TAB 2: 即時損益表 (Income Statement) -->
+  {% if active_tab == 'income_statement' %}
+  <div class="max-w-4xl mx-auto bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+      <div>
+        <h2 class="text-base font-bold text-slate-900">多步驟式損益表 (Multi-Step Income Statement)</h2>
+        <p class="text-xs text-slate-500 mt-0.5">計算期間：{{ income_statement.period_str }} • 幣別：新台幣 (TWD)</p>
+      </div>
+
+      <a href="/accounting/export/income-statement.xlsx"
+         class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        匯出 Excel 損益表 (.xlsx)
+      </a>
+    </div>
+
+    <div class="p-6">
+      <table class="w-full text-sm border-collapse">
+        <tbody class="divide-y divide-slate-100">
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-4 font-semibold text-slate-800">一、 營業收入 (Sales Revenue)</td>
+            <td class="py-3 px-4 text-right font-mono font-semibold text-slate-900 text-base">{{ income_statement.revenue_formatted }}</td>
+            <td class="py-3 px-4 text-right font-mono text-xs text-slate-500 w-24">100.00%</td>
+          </tr>
+
+          <tr class="hover:bg-slate-50 text-slate-600">
+            <td class="py-3 px-4 pl-8">減：營業成本 (Cost of Goods Sold - COGS)</td>
+            <td class="py-3 px-4 text-right font-mono text-slate-700">{{ income_statement.cogs_formatted }}</td>
+            <td class="py-3 px-4 text-right font-mono text-xs text-slate-500">-</td>
+          </tr>
+
+          <tr class="bg-indigo-50/50 font-bold border-t border-b border-indigo-100">
+            <td class="py-3 px-4 text-indigo-950 font-bold">二、 營業毛利 (Gross Profit)</td>
+            <td class="py-3 px-4 text-right font-mono font-bold text-indigo-700 text-base">{{ income_statement.gross_profit_formatted }}</td>
+            <td class="py-3 px-4 text-right font-mono text-xs text-indigo-700 font-semibold">{{ income_statement.gross_margin_pct }}</td>
+          </tr>
+
+          <tr class="hover:bg-slate-50 text-slate-600">
+            <td class="py-3 px-4 pl-8">減：營業費用 (Operating Expenses)</td>
+            <td class="py-3 px-4 text-right font-mono text-slate-700">{{ income_statement.operating_expenses_formatted }}</td>
+            <td class="py-3 px-4 text-right font-mono text-xs text-slate-500">-</td>
+          </tr>
+
+          <tr class="bg-slate-900 text-white font-bold text-base">
+            <td class="py-4 px-4 font-bold tracking-wide">三、 本期營業淨利 (Operating Net Income)</td>
+            <td class="py-4 px-4 text-right font-mono font-bold text-emerald-400 text-lg border-b-4 border-double border-emerald-400">
+              {{ income_statement.net_profit_formatted }}
+            </td>
+            <td class="py-4 px-4 text-right font-mono text-xs text-slate-300 font-semibold">{{ income_statement.net_margin_pct }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- TAB 3: 應收/應付帳齡分析 (Aging) -->
+  {% if active_tab == 'aging' %}
+  <div class="space-y-8">
+    
+    <!-- 應收帳款 (AR) 區塊 -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="p-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>{{ ar_aging.report_type }} 帳齡分析與款項催收</span>
+            <span class="text-xs font-normal text-slate-500">(未沖銷總額: {{ ar_aging.total_outstanding_formatted }})</span>
+          </h3>
+        </div>
+      </div>
+
+      <!-- 4 區間卡片 -->
+      <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50/50 border-b border-slate-200">
+        <div class="p-3 bg-white rounded-lg border border-slate-200">
+          <div class="text-xs text-slate-500">未到期 (Current)</div>
+          <div class="text-base font-bold text-emerald-600 font-mono mt-0.5">{{ ar_aging.current_amount_formatted }}</div>
+        </div>
+        <div class="p-3 bg-white rounded-lg border border-slate-200">
+          <div class="text-xs text-slate-500">逾期 1 - 30 天</div>
+          <div class="text-base font-bold text-sky-600 font-mono mt-0.5">{{ ar_aging.days_1_30_formatted }}</div>
+        </div>
+        <div class="p-3 bg-white rounded-lg border border-slate-200">
+          <div class="text-xs text-slate-500">逾期 31 - 60 天</div>
+          <div class="text-base font-bold text-amber-600 font-mono mt-0.5">{{ ar_aging.days_31_60_formatted }}</div>
+        </div>
+        <div class="p-3 bg-white rounded-lg border border-slate-200">
+          <div class="text-xs text-slate-500">逾期 60 天以上</div>
+          <div class="text-base font-bold text-rose-600 font-mono mt-0.5">{{ ar_aging.days_60_plus_formatted }}</div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+            <tr>
+              <th class="py-2.5 px-4">AR 編號</th>
+              <th class="py-2.5 px-4">訂單編號</th>
+              <th class="py-2.5 px-4">客戶名稱</th>
+              <th class="py-2.5 px-4 text-right">應收總額</th>
+              <th class="py-2.5 px-4 text-right">未收餘額</th>
+              <th class="py-2.5 px-4">到期日</th>
+              <th class="py-2.5 px-4 text-center">逾期天數</th>
+              <th class="py-2.5 px-4 text-center">帳齡區間</th>
+              <th class="py-2.5 px-4 text-center">沖銷作業</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {% for item in ar_aging.items %}
+            <tr class="hover:bg-slate-50">
+              <td class="py-2.5 px-4 font-mono font-medium text-slate-800">{{ item.item_id }}</td>
+              <td class="py-2.5 px-4 font-mono text-slate-600">{{ item.reference_id }}</td>
+              <td class="py-2.5 px-4 font-medium text-slate-900">{{ item.partner_name }}</td>
+              <td class="py-2.5 px-4 text-right font-mono text-slate-600">{{ item.amount_formatted }}</td>
+              <td class="py-2.5 px-4 text-right font-mono font-bold text-amber-700">{{ item.outstanding_formatted }}</td>
+              <td class="py-2.5 px-4 font-mono text-slate-600">{{ item.due_date }}</td>
+              <td class="py-2.5 px-4 text-center font-mono {{ item.days_overdue_class }}">
+                {% if item.days_overdue > 0 %}+{{ item.days_overdue }} 天{% else %}未逾期{% endif %}
+              </td>
+              <td class="py-2.5 px-4 text-center">
+                <span class="inline-block px-2 py-0.5 text-xs rounded font-medium {{ item.bucket_badge_class }}">
+                  {{ item.bucket }}
+                </span>
+              </td>
+              <td class="py-2.5 px-4 text-center">
+                {% if item.can_settle %}
+                <button hx-post="/accounting/ar/{{ item.item_id }}/settle"
+                        hx-swap="none"
+                        hx-confirm="確認沖銷結清客戶 {{ item.partner_name }} 之應收帳款？"
+                        class="px-2.5 py-1 text-xs font-semibold rounded bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition">
+                  ⚡ 沖銷收款
+                </button>
+                {% else %}
+                <span class="text-slate-400 text-xs">已結清</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="9" class="py-6 text-center text-slate-400">目前無未結清之應收帳款</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 應付帳款 (AP) 區塊 -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="p-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>{{ ap_aging.report_type }} 帳齡分析與應付管理</span>
+            <span class="text-xs font-normal text-slate-500">(未支付總額: {{ ap_aging.total_outstanding_formatted }})</span>
+          </h3>
+        </div>
+      </div>
+
+      <!-- 4 區間卡片 -->
+      <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50/50 border-b border-slate-200">
+        <div class="p-3 bg-white rounded-lg border border-slate-200">
+          <div class="text-xs text-slate-500">未到期 (Current)</div>
+          <div class="text-base font-bold text-emerald-600 font-mono mt-0.5">{{ ap_aging.current_amount_formatted }}</div>
+        </div>
+        <div class="p-3 bg-white rounded-lg border border-slate-200">
+          <div class="text-xs text-slate-500">逾期 1 - 30 天</div>
+          <div class="text-base font-bold text-sky-600 font-mono mt-0.5">{{ ap_aging.days_1_30_formatted }}</div>
+        </div>
+        <div class="p-3 bg-white rounded-lg border border-slate-200">
+          <div class="text-xs text-slate-500">逾期 31 - 60 天</div>
+          <div class="text-base font-bold text-amber-600 font-mono mt-0.5">{{ ap_aging.days_31_60_formatted }}</div>
+        </div>
+        <div class="p-3 bg-white rounded-lg border border-slate-200">
+          <div class="text-xs text-slate-500">逾期 60 天以上</div>
+          <div class="text-base font-bold text-rose-600 font-mono mt-0.5">{{ ap_aging.days_60_plus_formatted }}</div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+            <tr>
+              <th class="py-2.5 px-4">AP 編號</th>
+              <th class="py-2.5 px-4">採購單號</th>
+              <th class="py-2.5 px-4">供應商名稱</th>
+              <th class="py-2.5 px-4 text-right">應付總額</th>
+              <th class="py-2.5 px-4 text-right">未付餘額</th>
+              <th class="py-2.5 px-4">到期日</th>
+              <th class="py-2.5 px-4 text-center">逾期天數</th>
+              <th class="py-2.5 px-4 text-center">帳齡區間</th>
+              <th class="py-2.5 px-4 text-center">沖銷作業</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {% for item in ap_aging.items %}
+            <tr class="hover:bg-slate-50">
+              <td class="py-2.5 px-4 font-mono font-medium text-slate-800">{{ item.item_id }}</td>
+              <td class="py-2.5 px-4 font-mono text-slate-600">{{ item.reference_id }}</td>
+              <td class="py-2.5 px-4 font-medium text-slate-900">{{ item.partner_name }}</td>
+              <td class="py-2.5 px-4 text-right font-mono text-slate-600">{{ item.amount_formatted }}</td>
+              <td class="py-2.5 px-4 text-right font-mono font-bold text-rose-700">{{ item.outstanding_formatted }}</td>
+              <td class="py-2.5 px-4 font-mono text-slate-600">{{ item.due_date }}</td>
+              <td class="py-2.5 px-4 text-center font-mono {{ item.days_overdue_class }}">
+                {% if item.days_overdue > 0 %}+{{ item.days_overdue }} 天{% else %}未逾期{% endif %}
+              </td>
+              <td class="py-2.5 px-4 text-center">
+                <span class="inline-block px-2 py-0.5 text-xs rounded font-medium {{ item.bucket_badge_class }}">
+                  {{ item.bucket }}
+                </span>
+              </td>
+              <td class="py-2.5 px-4 text-center">
+                {% if item.can_settle %}
+                <button hx-post="/accounting/ap/{{ item.item_id }}/settle"
+                        hx-swap="none"
+                        hx-confirm="確認沖銷支付廠商 {{ item.partner_name }} 之應付帳款？"
+                        class="px-2.5 py-1 text-xs font-semibold rounded bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition">
+                  ⚡ 沖銷付款
+                </button>
+                {% else %}
+                <span class="text-slate-400 text-xs">已結清</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="9" class="py-6 text-center text-slate-400">目前無未結清之應付帳款</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+  {% endif %}
+
+  <!-- TAB 4: 借貸日記帳簿 (Journal Entries) -->
+  {% if active_tab == 'journal' %}
+  <div class="space-y-6">
+
+    <!-- Manual Journal Entry Form -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+        <span>✍️ 手動登錄借貸平衡傳票</span>
+        <span class="text-xs font-normal text-slate-500">（系統強制校驗 $\sum Dr = \sum Cr$，失衡將觸發即時防呆）</span>
+      </h3>
+
+      <form hx-post="/accounting/journal-entries" hx-swap="none" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">傳票日期</label>
+            <input type="date" name="entry_date" value="{{ trial_balance.as_of_date }}" required
+                   class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">摘要說明</label>
+            <input type="text" name="description" placeholder="例如：期初業主增資款存入" required
+                   class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <!-- Line 1 -->
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">分錄 1 科目</label>
+            <select name="account_code_1" required class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded bg-white">
+              {% for acc in accounts %}
+              <option value="{{ acc.account_code }}" {% if acc.account_code == '1101' %}selected{% endif %}>
+                {{ acc.account_code }} - {{ acc.account_name }} ({{ acc.account_type }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">借方金額 (Debit)</label>
+            <input type="number" step="0.01" min="0" name="debit_1" value="0"
+                   class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded font-mono">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">貸方金額 (Credit)</label>
+            <input type="number" step="0.01" min="0" name="credit_1" value="0"
+                   class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded font-mono">
+          </div>
+        </div>
+
+        <!-- Line 2 -->
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">分錄 2 科目</label>
+            <select name="account_code_2" required class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded bg-white">
+              {% for acc in accounts %}
+              <option value="{{ acc.account_code }}" {% if acc.account_code == '3101' %}selected{% endif %}>
+                {{ acc.account_code }} - {{ acc.account_name }} ({{ acc.account_type }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">借方金額 (Debit)</label>
+            <input type="number" step="0.01" min="0" name="debit_2" value="0"
+                   class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded font-mono">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">貸方金額 (Credit)</label>
+            <input type="number" step="0.01" min="0" name="credit_2" value="0"
+                   class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded font-mono">
+          </div>
+        </div>
+
+        <!-- Line 3 (Optional) -->
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">分錄 3 科目 (選填)</label>
+            <select name="account_code_3" class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded bg-white">
+              <option value="">-- 無 --</option>
+              {% for acc in accounts %}
+              <option value="{{ acc.account_code }}">
+                {{ acc.account_code }} - {{ acc.account_name }} ({{ acc.account_type }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">借方金額 (Debit)</label>
+            <input type="number" step="0.01" min="0" name="debit_3" value="0"
+                   class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded font-mono">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">貸方金額 (Credit)</label>
+            <input type="number" step="0.01" min="0" name="credit_3" value="0"
+                   class="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded font-mono">
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button type="submit"
+                  class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition">
+            送出平衡傳票
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Journal Entries Table -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="p-5 border-b border-slate-200 bg-slate-50">
+        <h3 class="text-base font-bold text-slate-900">日記帳簿傳票流水清單</h3>
+        <p class="text-xs text-slate-500 mt-0.5">即時記錄所有由 ERP 業務事件與人工登錄之傳票分錄</p>
+      </div>
+
+      <div class="divide-y divide-slate-200">
+        {% for entry in journal_entries %}
+        <div class="p-4 hover:bg-slate-50/50 transition">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-bold text-slate-900 text-xs">{{ entry.entry_id }}</span>
+              <span class="inline-block px-2 py-0.5 text-xs rounded border font-medium {{ entry.source_event_badge }}">
+                {{ entry.source_event }}
+              </span>
+              <span class="text-xs text-slate-500 font-mono">參照: {{ entry.reference_id }}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-slate-500 font-mono">{{ entry.entry_date }}</span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                借貸各 {{ entry.total_debit_formatted }}
+              </span>
+            </div>
+          </div>
+
+          <div class="text-xs font-medium text-slate-700 mb-2">{{ entry.description }}</div>
+
+          <!-- Lines table -->
+          <div class="bg-slate-50 rounded border border-slate-200 overflow-hidden">
+            <table class="w-full text-xs">
+              <tbody class="divide-y divide-slate-200">
+                {% for line in entry.lines %}
+                <tr>
+                  <td class="py-1.5 px-3 font-mono text-slate-600 w-24">{{ line.account_code }}</td>
+                  <td class="py-1.5 px-3 font-medium text-slate-800">{{ line.account_name }}</td>
+                  <td class="py-1.5 px-3 text-right font-mono w-32 {% if line.debit_formatted != '-' %}text-indigo-700 font-semibold{% else %}text-slate-400{% endif %}">
+                    {% if line.debit_formatted != '-' %}借 {{ line.debit_formatted }}{% else %}-{% endif %}
+                  </td>
+                  <td class="py-1.5 px-3 text-right font-mono w-32 {% if line.credit_formatted != '-' %}text-amber-700 font-semibold{% else %}text-slate-400{% endif %}">
+                    {% if line.credit_formatted != '-' %}貸 {{ line.credit_formatted }}{% else %}-{% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-slate-400 text-xs">目前無傳票分錄</div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
