@@ -5,6 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from src.channel_ui.web.dependencies import (
+    get_db,
+    get_invoice_service,
+    get_order_service,
+    get_templates,
+    get_view_service,
+)
 from src.channel_ui.web.view_service import WebViewService
 from src.core.adapters.mock_invoice_adapter import MockInvoiceProvider
 from src.core.adapters.pdf_printer_adapter import PdfPrinterAdapter
@@ -15,18 +22,6 @@ from src.core.services.order_service import OrderService
 from src.shared.database import Database
 
 router = APIRouter(prefix="/orders")
-
-
-def get_templates(request: Request) -> Jinja2Templates:
-    return request.app.state.templates
-
-
-def get_view_service(request: Request) -> WebViewService:
-    return request.app.state.view_service
-
-
-def get_db(request: Request) -> Database:
-    return request.app.state.db
 
 
 @router.get("", response_class=HTMLResponse)
@@ -52,9 +47,8 @@ async def confirm_order_endpoint(
     request: Request,
     templates: Jinja2Templates = Depends(get_templates),
     view_service: WebViewService = Depends(get_view_service),
-    db: Database = Depends(get_db),
+    order_service: OrderService = Depends(get_order_service),
 ):
-    order_service = OrderService(db=db)
     try:
         order_service.confirm_order(order_id=order_id, warehouse_id="WH-MAIN")
     except Exception as e:
@@ -79,9 +73,8 @@ async def ship_order_endpoint(
     request: Request,
     templates: Jinja2Templates = Depends(get_templates),
     view_service: WebViewService = Depends(get_view_service),
-    db: Database = Depends(get_db),
+    order_service: OrderService = Depends(get_order_service),
 ):
-    order_service = OrderService(db=db)
     try:
         order_service.ship_order(
             order_id=order_id,
@@ -112,9 +105,8 @@ async def issue_invoice_endpoint(
     request: Request,
     templates: Jinja2Templates = Depends(get_templates),
     view_service: WebViewService = Depends(get_view_service),
-    db: Database = Depends(get_db),
+    invoice_service: InvoiceService = Depends(get_invoice_service),
 ):
-    invoice_service = InvoiceService(db=db)
     try:
         invoice_service.issue_invoice_for_order(
             order_id=order_id,

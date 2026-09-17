@@ -4,13 +4,22 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 
 from src.channel_ui.web.dtos import (
+    AccountingKPIsDTO,
+    AgingItemViewDTO,
+    AgingSummaryViewDTO,
     DashboardSummaryDTO,
+    IncomeStatementViewDTO,
     InventoryStockDTO,
+    JournalEntryViewDTO,
+    JournalLineViewDTO,
     LowStockItemDTO,
     OrderRowDTO,
     StockLedgerRowDTO,
+    TrialBalanceRowDTO,
+    TrialBalanceViewDTO,
 )
-from src.core.services.invoice_service import InvoiceService
+from src.extended_core.accounting.models import AccountType, AgingBucket
+from src.extended_core.accounting.services.accounting_service import AccountingService
 from src.shared.database import Database, default_db
 
 STATUS_BADGES: Dict[str, str] = {
@@ -25,7 +34,7 @@ STATUS_BADGES: Dict[str, str] = {
 class WebViewService:
     def __init__(self, db: Database = default_db) -> None:
         self.db = db
-        self.invoice_service = InvoiceService(db=db)
+        self.accounting_service = AccountingService(db=db)
 
     def get_dashboard_summary(self) -> DashboardSummaryDTO:
         with self.db.transaction() as conn:
@@ -270,3 +279,210 @@ class WebViewService:
                 )
             )
         return movements
+
+    # --- TanGii (探吉) Accounting View Service Methods ---
+
+    def get_accounting_kpis(self) -> AccountingKPIsDTO:
+        income = self.accounting_service.get_income_statement()
+        ar_aging = self.accounting_service.get_ar_aging()
+        ap_aging = self.accounting_service.get_ap_aging()
+
+        return AccountingKPIsDTO(
+            revenue_formatted=f"NT$ {income.revenue:,.2f}",
+            cogs_formatted=f"NT$ {income.cogs:,.2f}",
+            gross_profit_formatted=f"NT$ {income.gross_profit:,.2f}",
+            net_profit_formatted=f"NT$ {income.net_profit:,.2f}",
+            ar_outstanding_formatted=f"NT$ {ar_aging.total_outstanding:,.2f}",
+            ap_outstanding_formatted=f"NT$ {ap_aging.total_outstanding:,.2f}",
+        )
+
+    def get_journal_entries_view(self, limit: int = 50) -> List[JournalEntryViewDTO]:
+        entries = self.accounting_service.get_journal_entries(limit=limit)
+        active_accounts = {a["account_code"]: a["account_name"] for a in self.get_active_accounts()}
+
+        event_badges = {
+            "ERP_GOODS_RECEIVED": "bg-amber-100 text-amber-800 border-amber-300",
+            "ERP_ORDER_SHIPPED": "bg-indigo-100 text-indigo-800 border-indigo-300",
+            "ERP_INVOICE_ISSUED": "bg-emerald-100 text-emerald-800 border-emerald-300",
+            "AR_RECEIPT": "bg-teal-100 text-teal-800 border-teal-300",
+            "AP_PAYMENT": "bg-purple-100 text-purple-800 border-purple-300",
+            "MANUAL": "bg-slate-100 text-slate-700 border-slate-300",
+        }
+
+        dtos: List[JournalEntryViewDTO] = []
+        for e in entries:
+            total_dr = sum((line.debit for line in e.lines), Decimal("0.0"))
+            total_cr = sum((line.credit for line in e.lines), Decimal("0.0"))
+            is_bal = abs(total_dr - total_cr) < Decimal("0.01")
+
+            line_dtos = [
+                JournalLineViewDTO(
+                    account_code=l.account_code,
+                    account_name=active_accounts.get(l.account_code, l.account_code),
+                    debit_formatted=f"{l.debit:,.2f}" if l.debit > 0 else "-",
+                    credit_formatted=f"{l.credit:,.2f}" if l.credit > 0 else "-",
+                )
+                for l in e.lines
+            ]
+
+            badge_class = event_badges.get(e.source_event, "bg-gray-100 text-gray-700 border-gray-300")
+
+            dtos.append(
+                JournalEntryViewDTO(
+                    entry_id=e.entry_id,
+                    entry_date=e.entry_date.isoformat(),
+                    source_event=e.source_event,
+                    source_event_badge=badge_class,
+                    reference_id=e.reference_id,
+                    description=e.description,
+                    lines=line_dtos,
+                    total_debit_formatted=f"NT$ {total_dr:,.2f}",
+                    total_credit_formatted=f"NT$ {total_cr:,.2f}",
+                    is_balanced=is_bal,
+                )
+            )
+        return dtos
+
+    def get_trial_balance_view(self, as_of_date: Optional[datetime.date] = None) -> TrialBalanceViewDTO:
+        tb = self.accounting_service.get_trial_balance(as_of_date=as_of_date)
+
+        type_badges = {
+            AccountType.ASSET: "bg-blue-50 text-blue-700 border-blue-200",
+            AccountType.LIABILITY: "bg-amber-50 text-amber-700 border-amber-200",
+            AccountType.EQUITY: "bg-purple-50 text-purple-700 border-purple-200",
+            AccountType.REVENUE: "bg-emerald-50 text-emerald-700 border-emerald-200",
+            AccountType.EXPENSE: "bg-rose-50 text-rose-700 border-rose-200",
+        }
+
+        type_labels = {
+            AccountType.ASSET: "資產",
+            AccountType.LIABILITY: "負債",
+            AccountType.EQUITY: "權益",
+            AccountType.REVENUE: "收入",
+            AccountType.EXPENSE: "費用與成本",
+        }
+
+        rows: List[TrialBalanceRowDTO] = []
+        for item in tb.items:
+            # Only display if there was activity or active account
+            badge_class = type_badges.get(item.account_type, "bg-slate-50 text-slate-700 border-slate-200")
+            type_label = type_labels.get(item.account_type, item.account_type.value)
+
+            rows.append(
+                TrialBalanceRowDTO(
+                    account_code=item.account_code,
+                    account_name=item.account_name,
+                    account_type=type_label,
+                    account_type_badge=badge_class,
+                    debit_total_formatted=f"NT$ {item.debit_total:,.2f}",
+                    credit_total_formatted=f"NT$ {item.credit_total:,.2f}",
+                    balance_debit_formatted=f"NT$ {item.balance_debit:,.2f}" if item.balance_debit > 0 else "-",
+                    balance_credit_formatted=f"NT$ {item.balance_credit:,.2f}" if item.balance_credit > 0 else "-",
+                )
+            )
+
+        return TrialBalanceViewDTO(
+            as_of_date=tb.as_of_date.isoformat(),
+            rows=rows,
+            total_debit_formatted=f"NT$ {tb.total_debit:,.2f}",
+            total_credit_formatted=f"NT$ {tb.total_credit:,.2f}",
+            is_balanced=tb.is_balanced,
+        )
+
+    def get_income_statement_view(
+        self, start_date: Optional[datetime.date] = None, end_date: Optional[datetime.date] = None
+    ) -> IncomeStatementViewDTO:
+        target_end_date = end_date or datetime.date.today()
+        stmt = self.accounting_service.get_income_statement(start_date=start_date, end_date=target_end_date)
+
+        rev = stmt.revenue
+        gross_pct = (stmt.gross_profit / rev * 100) if rev > 0 else Decimal("0.0")
+        net_pct = (stmt.net_profit / rev * 100) if rev > 0 else Decimal("0.0")
+
+        period_text = (
+            f"{start_date.isoformat()} 至 {target_end_date.isoformat()}"
+            if start_date
+            else f"成立至今 至 {target_end_date.isoformat()}"
+        )
+
+        return IncomeStatementViewDTO(
+            period_str=period_text,
+            revenue_formatted=f"NT$ {stmt.revenue:,.2f}",
+            cogs_formatted=f"NT$ {stmt.cogs:,.2f}",
+            gross_profit_formatted=f"NT$ {stmt.gross_profit:,.2f}",
+            gross_margin_pct=f"{gross_pct:.2f}%",
+            operating_expenses_formatted=f"NT$ {stmt.operating_expenses:,.2f}",
+            net_profit_formatted=f"NT$ {stmt.net_profit:,.2f}",
+            net_margin_pct=f"{net_pct:.2f}%",
+            is_profitable=(stmt.net_profit >= 0),
+        )
+
+    def get_aging_view(self, report_type: str = "RECEIVABLE") -> AgingSummaryViewDTO:
+        if report_type == "RECEIVABLE":
+            aging = self.accounting_service.get_ar_aging()
+            type_title = "應收帳款 (AR)"
+        else:
+            aging = self.accounting_service.get_ap_aging()
+            type_title = "應付帳款 (AP)"
+
+        bucket_badges = {
+            AgingBucket.CURRENT: "bg-emerald-50 text-emerald-700 border-emerald-300",
+            AgingBucket.DAYS_1_30: "bg-sky-50 text-sky-700 border-sky-300",
+            AgingBucket.DAYS_31_60: "bg-amber-50 text-amber-700 border-amber-300",
+            AgingBucket.DAYS_60_PLUS: "bg-rose-50 text-rose-700 border-rose-300",
+        }
+
+        items: List[AgingItemViewDTO] = []
+        for it in aging.items:
+            badge_class = bucket_badges.get(it.bucket, "bg-gray-50 text-gray-700 border-gray-300")
+            if it.days_overdue <= 0:
+                overdue_color = "text-slate-400"
+            elif 1 <= it.days_overdue <= 30:
+                overdue_color = "text-sky-600 font-bold"
+            elif 31 <= it.days_overdue <= 60:
+                overdue_color = "text-amber-600 font-bold"
+            else:
+                overdue_color = "text-rose-600 font-bold"
+
+            items.append(
+                AgingItemViewDTO(
+                    item_id=it.item_id,
+                    reference_id=it.reference_id,
+                    partner_name=it.partner_name,
+                    amount_formatted=f"NT$ {it.amount:,.2f}",
+                    paid_amount_formatted=f"NT$ {it.paid_amount:,.2f}",
+                    outstanding_formatted=f"NT$ {it.outstanding_amount:,.2f}",
+                    due_date=it.due_date.isoformat(),
+                    days_overdue=it.days_overdue,
+                    days_overdue_class=overdue_color,
+                    bucket=it.bucket.value,
+                    bucket_badge_class=badge_class,
+                    status=it.status,
+                    can_settle=(it.outstanding_amount > Decimal("0.0")),
+                )
+            )
+
+        return AgingSummaryViewDTO(
+            report_type=type_title,
+            total_outstanding_formatted=f"NT$ {aging.total_outstanding:,.2f}",
+            current_amount_formatted=f"NT$ {aging.current_amount:,.2f}",
+            days_1_30_formatted=f"NT$ {aging.days_1_30_amount:,.2f}",
+            days_31_60_formatted=f"NT$ {aging.days_31_60_amount:,.2f}",
+            days_60_plus_formatted=f"NT$ {aging.days_60_plus_amount:,.2f}",
+            items=items,
+        )
+
+    def get_active_accounts(self) -> List[Dict[str, str]]:
+        with self.db.transaction() as conn:
+            rows = conn.execute(
+                "SELECT account_code, account_name, account_type FROM accounts WHERE is_active = 1 ORDER BY account_code ASC"
+            ).fetchall()
+            return [
+                {
+                    "account_code": r["account_code"],
+                    "account_name": r["account_name"],
+                    "account_type": r["account_type"],
+                }
+                for r in rows
+            ]
+

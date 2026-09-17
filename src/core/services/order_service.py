@@ -11,21 +11,20 @@ from src.core.ports.printer_port import PrinterPort, ShippingLabelData
 from src.core.services.inventory_service import InventoryService
 from src.shared.base_models import DomainEvent
 from src.shared.database import Database, default_db
-from src.shared.event_bus import default_event_bus
 
 
 class OrderService:
     def __init__(
         self,
-        db: Database = default_db,
+        db: Database,
+        event_bus: EventBusPort,
         inventory_service: Optional[InventoryService] = None,
         printer: Optional[PrinterPort] = None,
-        event_bus: EventBusPort = default_event_bus,
     ) -> None:
         self.db = db
+        self.event_bus = event_bus
         self.inventory_service = inventory_service or InventoryService(db=db)
         self.printer = printer or PdfPrinterAdapter()
-        self.event_bus = event_bus
 
     def create_order(
         self,
@@ -35,7 +34,7 @@ class OrderService:
     ) -> SalesOrder:
         """Create a sales order in DRAFT status."""
         if not items:
-            raise ValueError("Sales order must contain at least one item")
+            raise ValueError("銷售訂單必須包含至少一項商品明細 (Sales order must contain at least one item)")
 
         order_id = f"SO-{uuid.uuid4().hex[:10].upper()}"
         total_amount = Decimal("0.0")
@@ -46,10 +45,10 @@ class OrderService:
             item_data = []
             for sku, qty, unit_price in items:
                 if qty <= Decimal("0.0") or unit_price < Decimal("0.0"):
-                    raise ValueError(f"Invalid quantity ({qty}) or unit price ({unit_price}) for SKU {sku}")
+                    raise ValueError(f"品號 {sku} 購買數量 ({qty}) 或銷售單價 ({unit_price}) 無效 (Invalid quantity or unit price)")
                 prod = conn.execute("SELECT 1 FROM products WHERE sku = ?", (sku,)).fetchone()
                 if not prod:
-                    raise ValueError(f"Product SKU {sku} does not exist")
+                    raise ValueError(f"商品品號 {sku} 不存在 (Product SKU does not exist)")
                 subtotal = qty * unit_price
                 total_amount += subtotal
                 item_data.append((sku, qty, unit_price, subtotal))
@@ -101,7 +100,7 @@ class OrderService:
                 (order_id,),
             ).fetchone()
             if not row:
-                raise ValueError(f"Sales order {order_id} not found")
+                raise ValueError(f"查無銷售訂單 {order_id} (Sales order not found)")
 
             item_rows = conn.execute(
                 "SELECT item_id, order_id, sku, qty, unit_price, subtotal FROM sales_order_items WHERE order_id = ?",
@@ -133,7 +132,7 @@ class OrderService:
         """Confirm order and acquire virtual stock locks for all items in the designated warehouse."""
         order = self.get_order(order_id)
         if order.status != OrderStatus.DRAFT:
-            raise ValueError(f"Cannot confirm order {order_id}: status is '{order.status.value}', expected 'DRAFT'")
+            raise ValueError(f"無法確認訂單 {order_id}：目前狀態為 '{order.status.value}'，僅草稿 (DRAFT) 狀態可執行鎖庫確認 (Cannot confirm order)")
 
         # Lock inventory for each item
         for item in order.items:
@@ -156,7 +155,7 @@ class OrderService:
         """Cancel an order and release any reserved virtual stock locks."""
         order = self.get_order(order_id)
         if order.status in (OrderStatus.SHIPPED, OrderStatus.COMPLETED):
-            raise ValueError(f"Cannot cancel order {order_id}: already {order.status.value}")
+            raise ValueError(f"無法取消訂單 {order_id}：單據目前為 '{order.status.value}' 狀態，不可取消 (Cannot cancel order)")
 
         if order.status == OrderStatus.CONFIRMED:
             self.inventory_service.release_stock_lock(order_id)
@@ -181,7 +180,7 @@ class OrderService:
         """One-click fulfillment: fulfill stock locks, deduct physical stock, create DO, and render PDF label."""
         order = self.get_order(order_id)
         if order.status != OrderStatus.CONFIRMED:
-            raise ValueError(f"Cannot ship order {order_id}: status is '{order.status.value}', expected 'CONFIRMED'")
+            raise ValueError(f"無法出貨訂單 {order_id}：目前狀態為 '{order.status.value}'，僅已確認 (CONFIRMED) 狀態可執行出貨扣庫 (Cannot ship order)")
 
         do_id = f"DO-{uuid.uuid4().hex[:10].upper()}"
         tracking = tracking_number or f"TRK-{uuid.uuid4().hex[:10].upper()}"

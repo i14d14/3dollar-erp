@@ -11,6 +11,7 @@ from src.core.services.invoice_service import InvoiceService
 from src.core.services.order_service import OrderService
 from src.core.services.scheduler_service import SchedulerService
 from src.shared.database import Database
+from src.shared.event_bus import EventBus
 
 
 class TestSchedulerService(unittest.TestCase):
@@ -20,9 +21,10 @@ class TestSchedulerService(unittest.TestCase):
         self.db = Database(self.db_path)
         self.db.init_db()
 
+        self.event_bus = EventBus()
         self.inv_service = InventoryService(db=self.db)
-        self.order_service = OrderService(db=self.db, inventory_service=self.inv_service)
-        self.invoice_service = InvoiceService(db=self.db)
+        self.order_service = OrderService(db=self.db, event_bus=self.event_bus, inventory_service=self.inv_service)
+        self.invoice_service = InvoiceService(db=self.db, event_bus=self.event_bus)
         self.scheduler = SchedulerService(db=self.db, inventory_service=self.inv_service)
 
         # Seed warehouses

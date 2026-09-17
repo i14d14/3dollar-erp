@@ -26,15 +26,24 @@ FORBIDDEN_RULES = {
 class ImportVisitor(ast.NodeVisitor):
     def __init__(self) -> None:
         self.imports: List[Tuple[int, str]] = []
+        self.detailed_imports: List[Tuple[int, Optional[str], List[str]]] = []
+        self.attribute_accesses: List[Tuple[int, str]] = []
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
             self.imports.append((node.lineno, alias.name))
+            self.detailed_imports.append((node.lineno, None, [alias.name]))
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         if node.module:
             self.imports.append((node.lineno, node.module))
+            self.detailed_imports.append((node.lineno, node.module, [alias.name for alias in node.names]))
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        if node.attr == "default_event_bus":
+            self.attribute_accesses.append((node.lineno, "default_event_bus"))
         self.generic_visit(node)
 
 def check_file(file_path: Path, forbidden_modules: List[str]) -> List[str]:
@@ -56,6 +65,21 @@ def check_file(file_path: Path, forbidden_modules: List[str]) -> List[str]:
                 violations.append(
                     f"{file_path}:{lineno} - Architecture violation: forbidden import of '{module_name}'"
                 )
+
+    # Architectural Rule: Forbid default_event_bus in core services, web routes, and extended core
+    rel_path = file_path.relative_to(SRC_ROOT).as_posix()
+    forbidden_bus_prefixes = ["core/services", "channel_ui/web/routes", "extended_core"]
+    if any(rel_path.startswith(p) for p in forbidden_bus_prefixes):
+        for lineno, module, symbols in visitor.detailed_imports:
+            if "default_event_bus" in symbols:
+                violations.append(
+                    f"{file_path}:{lineno} - Architecture violation: 'default_event_bus' import is strictly forbidden in '{rel_path}'. Event bus must be explicitly injected."
+                )
+        for lineno, attr in visitor.attribute_accesses:
+            violations.append(
+                f"{file_path}:{lineno} - Architecture violation: direct access to '{attr}' is strictly forbidden in '{rel_path}'. Event bus must be explicitly injected."
+            )
+
     return violations
 
 def run_checks() -> int:

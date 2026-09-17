@@ -5,23 +5,16 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from src.channel_ui.web.dependencies import (
+    get_inventory_service,
+    get_templates,
+    get_view_service,
+)
 from src.channel_ui.web.view_service import WebViewService
 from src.core.services.inventory_service import InventoryService
 from src.shared.database import Database
 
 router = APIRouter(prefix="/inventory")
-
-
-def get_templates(request: Request) -> Jinja2Templates:
-    return request.app.state.templates
-
-
-def get_view_service(request: Request) -> WebViewService:
-    return request.app.state.view_service
-
-
-def get_db(request: Request) -> Database:
-    return request.app.state.db
 
 
 @router.get("", response_class=HTMLResponse)
@@ -52,9 +45,8 @@ async def transfer_stock_endpoint(
     qty: float = Form(...),
     templates: Jinja2Templates = Depends(get_templates),
     view_service: WebViewService = Depends(get_view_service),
-    db: Database = Depends(get_db),
+    inventory_service: InventoryService = Depends(get_inventory_service),
 ):
-    inventory_service = InventoryService(db=db)
     ref_id = f"TRF-{uuid.uuid4().hex[:8].upper()}"
     try:
         inventory_service.transfer_stock(

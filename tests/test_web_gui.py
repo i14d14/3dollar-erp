@@ -11,6 +11,7 @@ from src.core.domain.inventory import ReferenceType
 from src.core.services.inventory_service import InventoryService
 from src.core.services.order_service import OrderService
 from src.shared.database import Database
+from src.shared.event_bus import EventBus
 
 
 class TestWebGUI(unittest.TestCase):
@@ -20,8 +21,13 @@ class TestWebGUI(unittest.TestCase):
         self.db = Database(self.db_path)
         self.db.init_db()
 
+        self.event_bus = EventBus()
         self.inventory_service = InventoryService(db=self.db)
-        self.order_service = OrderService(db=self.db, inventory_service=self.inventory_service)
+        self.order_service = OrderService(
+            db=self.db,
+            event_bus=self.event_bus,
+            inventory_service=self.inventory_service,
+        )
 
         # Seed initial warehouses and product
         self.inventory_service.create_warehouse("WH-MAIN", "台北總倉")
@@ -46,7 +52,7 @@ class TestWebGUI(unittest.TestCase):
         )
 
         # Create test client
-        self.app = create_app(db=self.db)
+        self.app = create_app(db=self.db, event_bus=self.event_bus)
         self.client = TestClient(self.app)
 
     def tearDown(self) -> None:
@@ -124,9 +130,8 @@ class TestWebGUI(unittest.TestCase):
             recipient_phone="0911-222-333",
             shipping_address="台北市信義區忠孝東路五段100號",
         )
-        invoice_service = self.order_service.inventory_service.db
         from src.core.services.invoice_service import InvoiceService
-        inv_svc = InvoiceService(db=invoice_service)
+        inv_svc = InvoiceService(db=self.db, event_bus=self.event_bus)
         inv_svc.issue_invoice_for_order(order.order_id)
 
         # 1. Download Shipping Label PDF

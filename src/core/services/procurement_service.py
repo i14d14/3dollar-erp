@@ -9,11 +9,10 @@ from src.core.domain.procurement import GoodsReceiptNote, POStatus, PurchaseOrde
 from src.core.ports.event_bus_port import EventBusPort
 from src.shared.base_models import DomainEvent
 from src.shared.database import Database, default_db
-from src.shared.event_bus import default_event_bus
 
 
 class ProcurementService:
-    def __init__(self, db: Database = default_db, event_bus: EventBusPort = default_event_bus) -> None:
+    def __init__(self, db: Database, event_bus: EventBusPort) -> None:
         self.db = db
         self.event_bus = event_bus
 

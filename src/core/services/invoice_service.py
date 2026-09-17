@@ -12,7 +12,6 @@ from src.core.ports.event_bus_port import EventBusPort
 from src.core.ports.invoice_port import InvoicePort, IssueInvoiceRequest
 from src.shared.base_models import DomainEvent, DomainModel
 from src.shared.database import Database, default_db
-from src.shared.event_bus import default_event_bus
 
 
 class ReconciliationReport(DomainModel):
@@ -31,13 +30,13 @@ class ReconciliationReport(DomainModel):
 class InvoiceService:
     def __init__(
         self,
-        db: Database = default_db,
+        db: Database,
+        event_bus: EventBusPort,
         invoice_provider: Optional[InvoicePort] = None,
-        event_bus: EventBusPort = default_event_bus,
     ) -> None:
         self.db = db
-        self.invoice_provider = invoice_provider or MockInvoiceProvider()
         self.event_bus = event_bus
+        self.invoice_provider = invoice_provider or MockInvoiceProvider()
 
     def issue_invoice_for_order(
         self,
@@ -55,7 +54,7 @@ class InvoiceService:
                 (order_id,),
             ).fetchone()
             if not order_row:
-                raise ValueError(f"Sales order {order_id} not found")
+                raise ValueError(f"查無銷售訂單 {order_id} (Sales order not found)")
 
             # Check if invoice already issued (1:1 constraint)
             existing_inv = conn.execute(
@@ -63,7 +62,7 @@ class InvoiceService:
                 (order_id,),
             ).fetchone()
             if existing_inv:
-                raise ValueError(f"Invoice already issued for order {order_id}: {existing_inv['invoice_id']}")
+                raise ValueError(f"訂單 {order_id} 已開立過發票：{existing_inv['invoice_id']}，不可重複開立 (Invoice already issued)")
 
             total_amount = Decimal(str(order_row["total_amount"]))
             customer_id = order_row["customer_id"]

@@ -3,17 +3,10 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from src.channel_ui.web.dependencies import get_templates, get_view_service
 from src.channel_ui.web.view_service import WebViewService
 
 router = APIRouter()
-
-
-def get_templates(request: Request) -> Jinja2Templates:
-    return request.app.state.templates
-
-
-def get_view_service(request: Request) -> WebViewService:
-    return request.app.state.view_service
 
 
 @router.get("/", response_class=HTMLResponse)

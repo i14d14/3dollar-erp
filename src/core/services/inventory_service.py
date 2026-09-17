@@ -176,7 +176,7 @@ class InventoryService:
 
             if new_balance < Decimal("0.0"):
                 raise InsufficientStockError(
-                    f"Stock adjustment failed: resulting balance ({new_balance}) cannot be negative for SKU {sku} in {warehouse_id}"
+                    f"庫存調整失敗：商品 {sku} 在倉庫 {warehouse_id} 調整後期末餘額 ({new_balance}) 不得為負數 (Insufficient stock balance)"
                 )
 
             ledger_id = f"LEDGER-{uuid.uuid4().hex[:12].upper()}"
@@ -220,9 +220,9 @@ class InventoryService:
     ) -> Tuple[StockLedgerEntry, StockLedgerEntry]:
         """Atomically transfer stock between two warehouses with strict available balance checks."""
         if qty <= Decimal("0.0"):
-            raise ValueError("Transfer quantity must be strictly positive")
+            raise ValueError("調撥數量必須大於 0 (Transfer quantity must be strictly positive)")
         if from_warehouse_id == to_warehouse_id:
-            raise ValueError("Cannot transfer stock to the same warehouse")
+            raise ValueError("無法調撥至同一倉庫 (Cannot transfer stock to the same warehouse)")
 
         with self.db.transaction() as conn:
             self._ensure_warehouse_and_product(conn, from_warehouse_id, sku)
@@ -235,8 +235,7 @@ class InventoryService:
 
             if available < qty:
                 raise InsufficientStockError(
-                    f"Transfer rejected: Insufficient available stock in {from_warehouse_id} for {sku}. "
-                    f"Available: {available}, Requested: {qty}"
+                    f"調撥失敗：來源倉庫 {from_warehouse_id} 之商品 {sku} 可用庫存不足（可用量：{available}，需求量：{qty}） (Insufficient available stock)"
                 )
 
             product = self._get_product_internal(conn, sku)
@@ -316,7 +315,7 @@ class InventoryService:
     def acquire_stock_lock(self, order_id: str, warehouse_id: str, sku: str, qty: Decimal) -> StockLock:
         """Lock virtual stock for an order before fulfillment."""
         if qty <= Decimal("0.0"):
-            raise ValueError("Lock quantity must be strictly positive")
+            raise ValueError("鎖庫數量必須大於 0 (Lock quantity must be strictly positive)")
 
         with self.db.transaction() as conn:
             self._ensure_warehouse_and_product(conn, warehouse_id, sku)
@@ -326,8 +325,7 @@ class InventoryService:
 
             if available < qty:
                 raise InsufficientStockError(
-                    f"Cannot lock stock for order {order_id}: Insufficient available stock for SKU {sku} in {warehouse_id}. "
-                    f"Available: {available}, Required: {qty}"
+                    f"無法鎖定訂單 {order_id} 庫存：倉庫 {warehouse_id} 之商品 {sku} 可用庫存不足（可用量：{available}，需求量：{qty}） (Insufficient available stock)"
                 )
 
             lock_id = f"LOCK-{uuid.uuid4().hex[:12].upper()}"
@@ -385,7 +383,7 @@ class InventoryService:
 
             if not lock_row:
                 raise StockLockNotFoundError(
-                    f"No active stock lock found for order {order_id}, warehouse {warehouse_id}, SKU {sku}"
+                    f"查無訂單 {order_id} 於倉庫 {warehouse_id} 針對品號 {sku} 之有效鎖庫記錄 (Stock lock not found)"
                 )
 
             # Update lock status
@@ -399,7 +397,7 @@ class InventoryService:
             new_balance = current_balance - qty
             if new_balance < Decimal("0.0"):
                 raise InsufficientStockError(
-                    f"Physical stock underflow: SKU {sku} in {warehouse_id} would drop to {new_balance}"
+                    f"扣庫失敗：商品 {sku} 在倉庫 {warehouse_id} 出庫後實體庫存將不足 ({new_balance}) (Physical stock underflow)"
                 )
 
             ledger_id = f"LEDGER-{uuid.uuid4().hex[:12].upper()}"
@@ -439,10 +437,10 @@ class InventoryService:
     def _ensure_warehouse_and_product(self, conn: sqlite3.Connection, warehouse_id: str, sku: str) -> None:
         wh = conn.execute("SELECT 1 FROM warehouses WHERE warehouse_id = ?", (warehouse_id,)).fetchone()
         if not wh:
-            raise WarehouseNotFoundError(f"Warehouse '{warehouse_id}' does not exist")
+            raise WarehouseNotFoundError(f"倉庫 '{warehouse_id}' 不存在 (Warehouse does not exist)")
         prod = conn.execute("SELECT 1 FROM products WHERE sku = ?", (sku,)).fetchone()
         if not prod:
-            raise ProductNotFoundError(f"Product with SKU '{sku}' does not exist")
+            raise ProductNotFoundError(f"商品品號 '{sku}' 不存在 (Product does not exist)")
 
     def _get_balance_internal(self, conn: sqlite3.Connection, warehouse_id: str, sku: str) -> Decimal:
         row = conn.execute(
