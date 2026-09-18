@@ -41,7 +41,7 @@ class CrmService:
         email: Optional[str] = None,
         phone: Optional[str] = None,
     ) -> Contact:
-        """建立客戶主檔，包含統編 8 位數格式校驗。"""
+        """建立客戶主檔，包含統編 8 位數格式校驗與公司名稱重複性防呆。"""
         company_clean = (company_name or "").strip()
         contact_clean = (contact_name or "").strip()
         if not company_clean:
@@ -61,6 +61,27 @@ class CrmService:
         )
 
         with self.db.transaction() as conn:
+            # 1. 檢查客戶公司名稱是否已存在 (不分大小寫與首尾空白)
+            dup_company = conn.execute(
+                "SELECT contact_id, company_name FROM crm_contacts WHERE LOWER(TRIM(company_name)) = LOWER(TRIM(?))",
+                (company_clean,),
+            ).fetchone()
+            if dup_company:
+                raise ValueError(
+                    f"客戶公司「{company_clean}」已存在於系統中，不可重複建立 (Company '{company_clean}' already exists)"
+                )
+
+            # 2. 檢查統一編號是否與既有客戶重複 (若有填寫統編)
+            if contact.tax_id:
+                dup_tax = conn.execute(
+                    "SELECT contact_id, company_name FROM crm_contacts WHERE tax_id = ?",
+                    (contact.tax_id,),
+                ).fetchone()
+                if dup_tax:
+                    raise ValueError(
+                        f"統一編號 {contact.tax_id} 已由客戶「{dup_tax['company_name']}」登記，不可重複建檔 (Tax ID already exists)"
+                    )
+
             conn.execute(
                 """
                 INSERT INTO crm_contacts (contact_id, company_name, tax_id, contact_name, email, phone)
@@ -123,20 +144,28 @@ class CrmService:
         email: Optional[str] = None,
         phone: Optional[str] = None,
     ) -> Contact:
-        """更新客戶主檔資訊。"""
+        """更新客戶主檔資訊（嚴格禁止更改客戶公司名稱）。"""
         existing = self.get_contact(contact_id)
         if not existing:
             raise ValueError(f"查無客戶 ID: {contact_id} (Contact not found)")
 
-        new_company = company_name.strip() if company_name is not None else existing.company_name
+        # 嚴格禁止更改客戶公司名稱
+        if company_name is not None and company_name.strip() and company_name.strip() != existing.company_name:
+            raise ValueError(
+                f"客戶公司名稱為企業主識別，建立後不允許變更（原名稱：{existing.company_name}）(Company name cannot be modified)"
+            )
+
         new_contact = contact_name.strip() if contact_name is not None else existing.contact_name
-        new_tax = tax_id if tax_id is not None else existing.tax_id
-        new_email = email.strip() if email is not None else existing.email
-        new_phone = phone.strip() if phone is not None else existing.phone
+        if not new_contact:
+            raise ValueError("聯絡人姓名不可為空 (Contact name is required)")
+
+        new_tax = tax_id.strip() if (tax_id is not None and tax_id.strip()) else None
+        new_email = email.strip() if (email is not None and email.strip()) else None
+        new_phone = phone.strip() if (phone is not None and phone.strip()) else None
 
         updated = Contact(
             contact_id=contact_id,
-            company_name=new_company,
+            company_name=existing.company_name,
             tax_id=new_tax,
             contact_name=new_contact,
             email=new_email,
@@ -144,14 +173,24 @@ class CrmService:
         )
 
         with self.db.transaction() as conn:
+            # 檢查統一編號是否與其他客戶衝突
+            if updated.tax_id:
+                dup_tax = conn.execute(
+                    "SELECT contact_id, company_name FROM crm_contacts WHERE tax_id = ? AND contact_id != ?",
+                    (updated.tax_id, contact_id),
+                ).fetchone()
+                if dup_tax:
+                    raise ValueError(
+                        f"統一編號 {updated.tax_id} 已由其他客戶「{dup_tax['company_name']}」登記 (Tax ID already exists)"
+                    )
+
             conn.execute(
                 """
                 UPDATE crm_contacts
-                SET company_name = ?, tax_id = ?, contact_name = ?, email = ?, phone = ?
+                SET tax_id = ?, contact_name = ?, email = ?, phone = ?
                 WHERE contact_id = ?
                 """,
                 (
-                    updated.company_name,
                     updated.tax_id,
                     updated.contact_name,
                     updated.email,

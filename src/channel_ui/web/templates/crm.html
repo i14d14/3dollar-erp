@@ -3,7 +3,7 @@
 {% block title %}哩來 CRM 前段商機 - 3Dollar ERP{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div id="crm-container" class="space-y-6">
 
   <!-- Header & KPI Section -->
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
@@ -161,7 +161,10 @@
   {% if active_tab == 'contacts' %}
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="p-4 border-b border-slate-200 flex items-center justify-between">
-      <h2 class="text-sm font-bold text-slate-800">企業客戶主檔與窗口清單</h2>
+      <div>
+        <h2 class="text-sm font-bold text-slate-800">企業客戶主檔與窗口清單</h2>
+        <p class="text-[11px] text-slate-400 mt-0.5">💡 點選表格中任一列項目，即可快速編輯窗口、統編與聯絡資料</p>
+      </div>
       <button onclick="document.getElementById('modal-new-contact').classList.remove('hidden')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg shadow-sm transition">
         ＋ 新增客戶
       </button>
@@ -182,9 +185,15 @@
         </thead>
         <tbody class="divide-y divide-slate-100">
           {% for contact in contacts %}
-          <tr class="hover:bg-slate-50/80 transition-colors">
-            <td class="py-3 px-4 font-mono font-medium text-slate-900">{{ contact.contact_id }}</td>
-            <td class="py-3 px-4 font-bold text-slate-900">{{ contact.company_name }}</td>
+          <tr class="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
+              onclick="openEditContactModal('{{ contact.contact_id }}', '{{ contact.company_name | escape }}', '{{ contact.tax_id or '' }}', '{{ contact.contact_name | escape }}', '{{ contact.email or '' }}', '{{ contact.phone or '' }}')">
+            <td class="py-3 px-4 font-mono font-medium text-slate-900 group-hover:text-indigo-600 transition-colors">{{ contact.contact_id }}</td>
+            <td class="py-3 px-4 font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
+              <div class="flex items-center gap-1.5">
+                <span>{{ contact.company_name }}</span>
+                <span class="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">✏️</span>
+              </div>
+            </td>
             <td class="py-3 px-4 font-mono text-slate-600">{{ contact.tax_id or '-' }}</td>
             <td class="py-3 px-4">{{ contact.contact_name }}</td>
             <td class="py-3 px-4 font-mono text-slate-500">{{ contact.email or '-' }}</td>
@@ -194,10 +203,16 @@
                 {{ contact.deal_count }} 案
               </span>
             </td>
-            <td class="py-3 px-4 text-center">
-              <button onclick="openDealModalWithContact('{{ contact.contact_id }}', '{{ contact.company_name }}')" class="text-indigo-600 hover:text-indigo-800 font-medium">
-                ＋ 提商機
-              </button>
+            <td class="py-3 px-4 text-center" onclick="event.stopPropagation()">
+              <div class="flex items-center justify-center gap-2">
+                <button type="button" onclick="event.stopPropagation(); openEditContactModal('{{ contact.contact_id }}', '{{ contact.company_name | escape }}', '{{ contact.tax_id or '' }}', '{{ contact.contact_name | escape }}', '{{ contact.email or '' }}', '{{ contact.phone or '' }}')" class="text-slate-500 hover:text-indigo-600 font-medium text-[11px] flex items-center gap-0.5">
+                  ✏️ 編輯
+                </button>
+                <span class="text-slate-200">|</span>
+                <button type="button" onclick="event.stopPropagation(); openDealModalWithContact('{{ contact.contact_id }}', '{{ contact.company_name | escape }}')" class="text-indigo-600 hover:text-indigo-800 font-medium text-[11px]">
+                  ＋ 提商機
+                </button>
+              </div>
             </td>
           </tr>
           {% else %}
@@ -211,162 +226,206 @@
   </div>
   {% endif %}
 
-</div>
-
-<!-- Modal: 新增客戶 -->
-<div id="modal-new-contact" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-  <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-scale-in">
-    <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-      <h3 class="text-sm font-bold text-slate-900">👤 新增企業客戶主檔</h3>
-      <button onclick="document.getElementById('modal-new-contact').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+  <!-- Modal: 新增客戶 (Inside crm-container so swap resets hidden state) -->
+  <div id="modal-new-contact" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-scale-in">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h3 class="text-sm font-bold text-slate-900">👤 新增企業客戶主檔</h3>
+        <button type="button" onclick="document.getElementById('modal-new-contact').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+      </div>
+      <form action="/crm/contacts" method="POST" hx-post="/crm/contacts" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" hx-on::after-request="if(event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { document.getElementById('modal-new-contact').classList.add('hidden'); }" class="p-5 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">公司名稱 <span class="text-rose-500">*</span></label>
+          <input type="text" name="company_name" required placeholder="例如：宏達數位科技有限公司" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">統一編號 (8碼)</label>
+            <input type="text" name="tax_id" maxlength="8" placeholder="例如：12345678" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">聯絡人員 <span class="text-rose-500">*</span></label>
+            <input type="text" name="contact_name" required placeholder="例如：陳經理" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">電子郵件</label>
+            <input type="email" name="email" placeholder="contact@company.tw" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">聯絡電話</label>
+            <input type="text" name="phone" placeholder="02-23456789" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+          </div>
+        </div>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="document.getElementById('modal-new-contact').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">取消</button>
+          <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm">儲存建檔</button>
+        </div>
+      </form>
     </div>
-    <form action="/crm/contacts" method="POST" class="p-5 space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">公司名稱 <span class="text-rose-500">*</span></label>
-        <input type="text" name="company_name" required placeholder="例如：宏達數位科技有限公司" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">統一編號 (8碼)</label>
-          <input type="text" name="tax_id" maxlength="8" placeholder="例如：12345678" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">聯絡人員 <span class="text-rose-500">*</span></label>
-          <input type="text" name="contact_name" required placeholder="例如：陳經理" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
-        </div>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">電子郵件</label>
-          <input type="email" name="email" placeholder="contact@company.tw" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">聯絡電話</label>
-          <input type="text" name="phone" placeholder="02-23456789" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
-        </div>
-      </div>
-      <div class="pt-2 flex justify-end gap-2">
-        <button type="button" onclick="document.getElementById('modal-new-contact').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">取消</button>
-        <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm">儲存建檔</button>
-      </div>
-    </form>
   </div>
-</div>
 
-<!-- Modal: 建立新商機 -->
-<div id="modal-new-deal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-  <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-scale-in">
-    <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-      <h3 class="text-sm font-bold text-slate-900">✨ 建立新商機 (New Deal)</h3>
-      <button onclick="document.getElementById('modal-new-deal').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
-    </div>
-    <form action="/crm/deals" method="POST" class="p-5 space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">目標客戶 <span class="text-rose-500">*</span></label>
-        <select id="deal-contact-select" name="contact_id" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
-          <option value="">-- 請選擇客戶 --</option>
-          {% for c in contacts %}
-            <option value="{{ c.contact_id }}">{{ c.company_name }} ({{ c.contact_name }})</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">商機案名 <span class="text-rose-500">*</span></label>
-        <input type="text" name="title" required placeholder="例如：2026 辦公室智慧終端硬體換新案" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
-      </div>
-      <div class="grid grid-cols-2 gap-3">
+  <!-- Modal: 編輯企業客戶資料 (Inside crm-container) -->
+  <div id="modal-edit-contact" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-scale-in">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">預估金額 (NT$)</label>
-          <input type="number" name="expected_amount" value="50000" min="0" step="1000" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono">
+          <h3 class="text-sm font-bold text-slate-900">✏️ 編輯企業客戶資料</h3>
+          <p class="text-[11px] font-mono text-slate-500 mt-0.5" id="edit-contact-id-display">CUST-XXXXXXXX</p>
         </div>
+        <button type="button" onclick="document.getElementById('modal-edit-contact').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+      </div>
+      <form id="form-edit-contact" method="POST" action="/crm/contacts" hx-post="/crm/contacts" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" hx-on::after-request="if(event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { document.getElementById('modal-edit-contact').classList.add('hidden'); }" class="p-5 space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">初始階段</label>
-          <select name="stage" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
-            <option value="LEAD">潛在商機 (LEAD)</option>
-            <option value="DISCOVERY">需求洽談 (DISCOVERY)</option>
-            <option value="PROPOSAL">方案報價 (PROPOSAL)</option>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">公司名稱</label>
+          <input type="text" id="edit-company-name-display" disabled class="w-full px-3 py-2 text-xs bg-slate-100 text-slate-600 border border-slate-200 rounded-lg cursor-not-allowed font-medium">
+          <p class="text-[10px] text-slate-400 mt-1">🔒 公司名稱為企業主識別，建立後不可變更</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">統一編號 (8碼)</label>
+            <input type="text" name="tax_id" id="edit-tax-id" maxlength="8" pattern="\d{8}" placeholder="例如：12345678" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">聯絡人員 <span class="text-rose-500">*</span></label>
+            <input type="text" name="contact_name" id="edit-contact-name" required placeholder="例如：陳經理" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">電子郵件</label>
+            <input type="email" name="email" id="edit-email" placeholder="contact@company.tw" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">聯絡電話</label>
+            <input type="text" name="phone" id="edit-phone" placeholder="02-23456789" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono">
+          </div>
+        </div>
+        <div class="pt-2 flex justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="document.getElementById('modal-edit-contact').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">取消</button>
+          <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm">儲存修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: 建立新商機 (Inside crm-container) -->
+  <div id="modal-new-deal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-scale-in">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h3 class="text-sm font-bold text-slate-900">✨ 建立新商機 (New Deal)</h3>
+        <button type="button" onclick="document.getElementById('modal-new-deal').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+      </div>
+      <form action="/crm/deals" method="POST" hx-post="/crm/deals" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" hx-on::after-request="if(event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { document.getElementById('modal-new-deal').classList.add('hidden'); }" class="p-5 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">目標客戶 <span class="text-rose-500">*</span></label>
+          <select id="deal-contact-select" name="contact_id" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+            <option value="">-- 請選擇客戶 --</option>
+            {% for c in contacts %}
+              <option value="{{ c.contact_id }}">{{ c.company_name }} ({{ c.contact_name }})</option>
+            {% endfor %}
           </select>
         </div>
-      </div>
-      <div class="pt-2 flex justify-end gap-2">
-        <button type="button" onclick="document.getElementById('modal-new-deal').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">取消</button>
-        <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm">建立商機</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Modal: 建立報價單 (Quotation Generator) -->
-<div id="modal-new-quote" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-  <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-scale-in">
-    <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-      <div>
-        <h3 class="text-sm font-bold text-slate-900">📄 建立商業報價單與文件套印</h3>
-        <p id="quote-modal-deal-title" class="text-[11px] text-slate-500 mt-0.5"></p>
-      </div>
-      <button onclick="document.getElementById('modal-new-quote').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">商機案名 <span class="text-rose-500">*</span></label>
+          <input type="text" name="title" required placeholder="例如：2026 辦公室智慧終端硬體換新案" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">預估金額 (NT$)</label>
+            <input type="number" name="expected_amount" value="50000" min="0" step="1000" autocomplete="off" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">初始階段</label>
+            <select name="stage" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+              <option value="LEAD">潛在商機 (LEAD)</option>
+              <option value="DISCOVERY">需求洽談 (DISCOVERY)</option>
+              <option value="PROPOSAL">方案報價 (PROPOSAL)</option>
+            </select>
+          </div>
+        </div>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="document.getElementById('modal-new-deal').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">取消</button>
+          <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm">建立商機</button>
+        </div>
+      </form>
     </div>
-    <form id="quote-form" action="" method="POST" class="p-5 space-y-4">
-      
-      <!-- Item 1 -->
-      <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-        <div class="text-xs font-bold text-slate-700">報價明細項次 1 <span class="text-rose-500">*</span></div>
-        <div class="grid grid-cols-12 gap-2">
-          <div class="col-span-6">
-            <label class="block text-[11px] text-slate-500 mb-0.5">選擇品號 / 規格</label>
-            <select name="sku_1" required onchange="updateItemPrice(this, 'price_1')" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
-              {% for p in products %}
-                <option value="{{ p.sku }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.sku }})</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-span-3">
-            <label class="block text-[11px] text-slate-500 mb-0.5">數量</label>
-            <input type="number" name="qty_1" value="5" min="1" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
-          </div>
-          <div class="col-span-3">
-            <label class="block text-[11px] text-slate-500 mb-0.5">單價 (NT$)</label>
-            <input type="number" id="price_1" name="price_1" value="{% if products %}{{ products[0].price }}{% else %}1000{% endif %}" min="0" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
-          </div>
-        </div>
-      </div>
-
-      <!-- Item 2 (Optional) -->
-      <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-        <div class="text-xs font-bold text-slate-700">報價明細項次 2 (選填)</div>
-        <div class="grid grid-cols-12 gap-2">
-          <div class="col-span-6">
-            <label class="block text-[11px] text-slate-500 mb-0.5">選擇品號 / 規格</label>
-            <select name="sku_2" onchange="updateItemPrice(this, 'price_2')" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
-              <option value="">-- 不加購項次 2 --</option>
-              {% for p in products %}
-                <option value="{{ p.sku }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.sku }})</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-span-3">
-            <label class="block text-[11px] text-slate-500 mb-0.5">數量</label>
-            <input type="number" name="qty_2" value="2" min="0" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
-          </div>
-          <div class="col-span-3">
-            <label class="block text-[11px] text-slate-500 mb-0.5">單價 (NT$)</label>
-            <input type="number" id="price_2" name="price_2" value="0" min="0" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">報價有效天數</label>
-        <input type="number" name="valid_days" value="30" min="1" max="180" class="w-28 px-3 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
-        <span class="text-xs text-slate-400 ml-1">天（系統自動試算有效截止日）</span>
-      </div>
-
-      <div class="pt-2 flex justify-end gap-2 border-t border-slate-200">
-        <button type="button" onclick="document.getElementById('modal-new-quote').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">取消</button>
-        <button type="submit" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm">產出報價單並進展至 PROPOSAL</button>
-      </div>
-    </form>
   </div>
+
+  <!-- Modal: 建立報價單 (Quotation Generator, inside crm-container) -->
+  <div id="modal-new-quote" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-scale-in">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">📄 建立商業報價單與文件套印</h3>
+          <p id="quote-modal-deal-title" class="text-[11px] text-slate-500 mt-0.5"></p>
+        </div>
+        <button type="button" onclick="document.getElementById('modal-new-quote').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+      </div>
+      <form id="quote-form" action="" method="POST" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" hx-on::after-request="if(event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { document.getElementById('modal-new-quote').classList.add('hidden'); }" autocomplete="off" class="p-5 space-y-4">
+        
+        <!-- Item 1 -->
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+          <div class="text-xs font-bold text-slate-700">報價明細項次 1 <span class="text-rose-500">*</span></div>
+          <div class="grid grid-cols-12 gap-2">
+            <div class="col-span-6">
+              <label class="block text-[11px] text-slate-500 mb-0.5">選擇品號 / 規格</label>
+              <select name="sku_1" required onchange="updateItemPrice(this, 'price_1')" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
+                {% for p in products %}
+                  <option value="{{ p.sku }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.sku }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-span-3">
+              <label class="block text-[11px] text-slate-500 mb-0.5">數量</label>
+              <input type="number" name="qty_1" value="5" min="1" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
+            </div>
+            <div class="col-span-3">
+              <label class="block text-[11px] text-slate-500 mb-0.5">單價 (NT$)</label>
+              <input type="number" id="price_1" name="price_1" value="{% if products %}{{ products[0].price }}{% else %}1000{% endif %}" min="0" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 2 (Optional) -->
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+          <div class="text-xs font-bold text-slate-700">報價明細項次 2 (選填)</div>
+          <div class="grid grid-cols-12 gap-2">
+            <div class="col-span-6">
+              <label class="block text-[11px] text-slate-500 mb-0.5">選擇品號 / 規格</label>
+              <select name="sku_2" onchange="updateItemPrice(this, 'price_2')" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
+                <option value="">-- 不加購項次 2 --</option>
+                {% for p in products %}
+                  <option value="{{ p.sku }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.sku }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-span-3">
+              <label class="block text-[11px] text-slate-500 mb-0.5">數量</label>
+              <input type="number" name="qty_2" value="2" min="0" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
+            </div>
+            <div class="col-span-3">
+              <label class="block text-[11px] text-slate-500 mb-0.5">單價 (NT$)</label>
+              <input type="number" id="price_2" name="price_2" value="0" min="0" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">報價有效天數</label>
+          <input type="number" name="valid_days" value="30" min="1" max="180" autocomplete="off" class="w-28 px-3 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
+          <span class="text-xs text-slate-400 ml-1">天（系統自動試算有效截止日）</span>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2 border-t border-slate-200">
+          <button type="button" onclick="document.getElementById('modal-new-quote').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">取消</button>
+          <button type="submit" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm">產出報價單並進展至 PROPOSAL</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -378,9 +437,37 @@
 
   function openQuoteModal(dealId, dealTitle) {
     const form = document.getElementById('quote-form');
-    form.action = `/crm/deals/${dealId}/quotes`;
+    const url = `/crm/deals/${dealId}/quotes`;
+    form.action = url;
+    form.setAttribute('hx-post', url);
+    if (window.htmx) htmx.process(form);
     document.getElementById('quote-modal-deal-title').innerText = `商機：${dealTitle} (${dealId})`;
     document.getElementById('modal-new-quote').classList.remove('hidden');
+  }
+
+  function openEditContactModal(contactId, companyName, taxId, contactName, email, phone) {
+    const idElem = document.getElementById('edit-contact-id-display');
+    if (idElem) idElem.innerText = contactId;
+    const compElem = document.getElementById('edit-company-name-display');
+    if (compElem) compElem.value = companyName;
+    const taxElem = document.getElementById('edit-tax-id');
+    if (taxElem) taxElem.value = taxId || '';
+    const nameElem = document.getElementById('edit-contact-name');
+    if (nameElem) nameElem.value = contactName || '';
+    const emailElem = document.getElementById('edit-email');
+    if (emailElem) emailElem.value = email || '';
+    const phoneElem = document.getElementById('edit-phone');
+    if (phoneElem) phoneElem.value = phone || '';
+
+    const form = document.getElementById('form-edit-contact');
+    if (form) {
+      const url = `/crm/contacts/${contactId}`;
+      form.action = url;
+      form.setAttribute('hx-post', url);
+      if (window.htmx) htmx.process(form);
+    }
+    const modal = document.getElementById('modal-edit-contact');
+    if (modal) modal.classList.remove('hidden');
   }
 
   function updateItemPrice(selectElem, priceInputId) {

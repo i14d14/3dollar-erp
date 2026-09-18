@@ -10,8 +10,13 @@
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script>
     document.addEventListener('htmx:beforeSwap', function(evt) {
+      // 2xx (成功完成): 自動清理過往殘留之錯誤通知橫幅
+      if (evt.detail.xhr.status >= 200 && evt.detail.xhr.status < 300) {
+        const toast = document.getElementById('toast-container');
+        if (toast) toast.innerHTML = '';
+      }
       // 4xx (業務預期防呆): 允許處理，配合後端 OOB 放入通知區
-      if (evt.detail.xhr.status >= 400 && evt.detail.xhr.status < 500) {
+      else if (evt.detail.xhr.status >= 400 && evt.detail.xhr.status < 500) {
         evt.detail.shouldSwap = true;
         evt.detail.isError = false;
       }
@@ -114,8 +119,8 @@
       </div>
     </header>
 
-    <!-- Global Alert / Toast Area -->
-    <div id="toast-container" class="px-6 pt-4 empty:hidden"></div>
+    <!-- Global Floating Toast Notification Layer (Above Modals & Headers) -->
+    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-xl px-4 pointer-events-auto empty:hidden transition-all duration-300"></div>
 
     <!-- Page Body -->
     <div class="p-6 flex-1">

@@ -55,6 +55,7 @@ class QuoteDocumentEngine:
         meta_table = doc.add_table(rows=5, cols=2)
         meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         meta_table.autofit = False
+        meta_table.style = "Table Grid"
 
         left_data = [
             f"客戶名稱：{contact.company_name}",
@@ -97,6 +98,7 @@ class QuoteDocumentEngine:
         item_table = doc.add_table(rows=1 + len(items_detail), cols=6)
         item_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         item_table.autofit = False
+        item_table.style = "Table Grid"
 
         col_widths = [Inches(0.6), Inches(1.3), Inches(2.2), Inches(0.7), Inches(1.0), Inches(1.0)]
 

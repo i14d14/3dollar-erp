@@ -11,7 +11,8 @@
         "javascript-typescript",
         "dependency-cruiser",
         "docx-manager",
-        "cloudflare"
+        "cloudflare",
+        "htmx"
       ]
     }
   ]

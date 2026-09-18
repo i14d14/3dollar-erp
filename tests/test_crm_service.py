@@ -80,7 +80,14 @@ class TestCrmService(unittest.TestCase):
         contacts = self.crm_service.list_contacts()
         self.assertEqual(len(contacts), 1)
 
-        # 4. Update contact
+        # 4. Prevent duplicate company name
+        with self.assertRaises(ValueError):
+            self.crm_service.create_contact(
+                company_name="三圓數位系統股份有限公司",
+                contact_name="李經理",
+            )
+
+        # 5. Update contact (valid update)
         updated = self.crm_service.update_contact(
             contact_id=contact.contact_id,
             contact_name="林副總裁",
@@ -88,6 +95,14 @@ class TestCrmService(unittest.TestCase):
         )
         self.assertEqual(updated.contact_name, "林副總裁")
         self.assertEqual(updated.phone, "0912-345-678")
+        self.assertEqual(updated.company_name, "三圓數位系統股份有限公司")
+
+        # 6. Prohibit modifying company name
+        with self.assertRaises(ValueError):
+            self.crm_service.update_contact(
+                contact_id=contact.contact_id,
+                company_name="改名後企業股份有限公司",
+            )
 
     def test_deal_pipeline_progression(self):
         contact = self.crm_service.create_contact(
@@ -168,6 +183,9 @@ class TestCrmService(unittest.TestCase):
         doc_text = " ".join(p.text for p in doc.paragraphs)
         self.assertIn("3Dollar ERP", doc_text)
         self.assertIn("富邦數位媒體科技", doc.tables[0].cell(0, 0).text)
+        # Verify Table Grid style for clear gridlines
+        self.assertEqual(doc.tables[0].style.name, "Table Grid")
+        self.assertEqual(doc.tables[1].style.name, "Table Grid")
 
         # 2. Test PDF generation
         pdf_bytes = self.crm_service.generate_quote_pdf(quote.quote_id)

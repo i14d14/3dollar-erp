@@ -1,6 +1,7 @@
 from __future__ import annotations
 from decimal import Decimal
 from typing import List, Optional, Tuple
+import urllib.parse
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/crm", tags=["crm"])
 async def crm_page(
     request: Request,
     tab: str = "kanban",
+    msg: Optional[str] = None,
     templates: Jinja2Templates = Depends(get_templates),
     view_service: WebViewService = Depends(get_view_service),
 ):
@@ -41,6 +43,7 @@ async def crm_page(
             "kanban": kanban,
             "contacts": contacts,
             "products": products,
+            "success_message": msg,
         },
     )
 
@@ -88,7 +91,56 @@ async def create_contact_endpoint(
             },
         )
 
-    return RedirectResponse(url="/crm?tab=contacts", status_code=303)
+    msg_encoded = urllib.parse.quote(f"成功建立客戶：{company_name}")
+    return RedirectResponse(url=f"/crm?tab=contacts&msg={msg_encoded}", status_code=303)
+
+
+@router.post("/contacts/{contact_id}", response_class=HTMLResponse)
+async def update_contact_endpoint(
+    contact_id: str,
+    request: Request,
+    contact_name: str = Form(...),
+    tax_id: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None),
+    crm_service: CrmService = Depends(get_crm_service),
+    templates: Jinja2Templates = Depends(get_templates),
+    view_service: WebViewService = Depends(get_view_service),
+):
+    """更新客戶主檔資料（嚴格禁止變更公司名稱）。"""
+    try:
+        updated = crm_service.update_contact(
+            contact_id=contact_id,
+            company_name=None,  # 嚴格禁止修改客戶公司名稱
+            contact_name=contact_name,
+            tax_id=tax_id if tax_id and tax_id.strip() else None,
+            email=email if email and email.strip() else None,
+            phone=phone if phone and phone.strip() else None,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if request.headers.get("HX-Request") == "true":
+        summary = view_service.get_crm_summary()
+        contacts = view_service.list_contacts_with_stats()
+        kanban = view_service.get_crm_kanban()
+        products = view_service.list_active_products_for_quote()
+        return templates.TemplateResponse(
+            request=request,
+            name="crm.html",
+            context={
+                "active_page": "crm",
+                "active_tab": "contacts",
+                "summary": summary,
+                "kanban": kanban,
+                "contacts": contacts,
+                "products": products,
+                "success_message": f"成功更新客戶資料：{updated.company_name}",
+            },
+        )
+
+    msg_encoded = urllib.parse.quote(f"成功更新客戶資料：{updated.company_name}")
+    return RedirectResponse(url=f"/crm?tab=contacts&msg={msg_encoded}", status_code=303)
 
 
 @router.post("/deals", response_class=HTMLResponse)
@@ -133,7 +185,8 @@ async def create_deal_endpoint(
             },
         )
 
-    return RedirectResponse(url="/crm?tab=kanban", status_code=303)
+    msg_encoded = urllib.parse.quote(f"成功建立商機：{title}")
+    return RedirectResponse(url=f"/crm?tab=kanban&msg={msg_encoded}", status_code=303)
 
 
 @router.post("/deals/{deal_id}/stage", response_class=HTMLResponse)
@@ -171,7 +224,8 @@ async def advance_deal_stage_endpoint(
             },
         )
 
-    return RedirectResponse(url="/crm?tab=kanban", status_code=303)
+    msg_encoded = urllib.parse.quote(f"商機 {deal_id} 已變更階段為 {new_stage.value}")
+    return RedirectResponse(url=f"/crm?tab=kanban&msg={msg_encoded}", status_code=303)
 
 
 @router.post("/deals/{deal_id}/quotes", response_class=HTMLResponse)
@@ -225,7 +279,8 @@ async def create_quote_endpoint(
             },
         )
 
-    return RedirectResponse(url="/crm?tab=kanban", status_code=303)
+    msg_encoded = urllib.parse.quote(f"成功建立報價單 {quote.quote_number}，金額 NT$ {quote.total_amount:,.2f}")
+    return RedirectResponse(url=f"/crm?tab=kanban&msg={msg_encoded}", status_code=303)
 
 
 @router.get("/quotes/{quote_id}/docx")
@@ -301,4 +356,5 @@ async def convert_deal_endpoint(
             },
         )
 
-    return RedirectResponse(url="/crm?tab=kanban", status_code=303)
+    msg_encoded = urllib.parse.quote(f"商機已成功拋轉為 ERP 銷售訂單 {so.order_id} (NT$ {so.total_amount:,.2f})！")
+    return RedirectResponse(url=f"/crm?tab=kanban&msg={msg_encoded}", status_code=303)

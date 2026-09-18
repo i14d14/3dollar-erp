@@ -56,7 +56,7 @@
   <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5">
     <div class="flex items-center gap-1 flex-wrap">
       {% if deal.can_advance_discovery %}
-      <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" class="inline">
+      <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" hx-post="/crm/deals/{{ deal.deal_id }}/stage" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" class="inline">
         <input type="hidden" name="stage" value="DISCOVERY">
         <button type="submit" class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 transition">
           進展洽談 ➜
@@ -65,7 +65,7 @@
       {% endif %}
 
       {% if deal.can_advance_proposal %}
-      <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" class="inline">
+      <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" hx-post="/crm/deals/{{ deal.deal_id }}/stage" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" class="inline">
         <input type="hidden" name="stage" value="PROPOSAL">
         <button type="submit" class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition">
           進展報價 ➜
@@ -80,7 +80,7 @@
       {% endif %}
 
       {% if deal.can_convert_order %}
-      <form action="/crm/deals/{{ deal.deal_id }}/convert-to-order" method="POST" class="inline">
+      <form action="/crm/deals/{{ deal.deal_id }}/convert-to-order" method="POST" hx-post="/crm/deals/{{ deal.deal_id }}/convert-to-order" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" class="inline">
         <button type="submit" class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition">
           ⚡ 贏單轉 ERP
         </button>
@@ -88,9 +88,9 @@
       {% endif %}
 
       {% if deal.can_reopen %}
-      <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" class="inline">
+      <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" hx-post="/crm/deals/{{ deal.deal_id }}/stage" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" class="inline">
         <input type="hidden" name="stage" value="LEAD">
-        <button type="submit" class="px-2 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">
+        <button type="submit" class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 transition">
           ↺ 重啟商機
         </button>
       </form>
@@ -98,7 +98,7 @@
     </div>
 
     {% if deal.can_mark_lost %}
-    <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" class="inline">
+    <form action="/crm/deals/{{ deal.deal_id }}/stage" method="POST" hx-post="/crm/deals/{{ deal.deal_id }}/stage" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" class="inline">
       <input type="hidden" name="stage" value="LOST">
       <button type="submit" class="text-[10px] text-slate-400 hover:text-rose-600 transition" onclick="return confirm('確定將此商機標記為輸單嗎？')">
         輸單 ✕

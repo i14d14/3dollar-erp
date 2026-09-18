@@ -68,6 +68,47 @@ class TestCrmWeb(unittest.TestCase):
         self.assertEqual(resp_err.status_code, 400)
         self.assertIn("統一編號格式錯誤", resp_err.text)
 
+        # Duplicate company name rejection
+        resp_dup = self.client.post(
+            "/crm/contacts",
+            data={
+                "company_name": "台灣精密儀器股份有限公司",
+                "contact_name": "重複錄入人員",
+            },
+            headers={"HX-Request": "true"},
+        )
+        self.assertEqual(resp_dup.status_code, 400)
+        self.assertIn("已存在於系統中，不可重複建立", resp_dup.text)
+
+    def test_update_contact_endpoint(self):
+        # Fetch an existing contact
+        with self.db.transaction() as conn:
+            c = conn.execute("SELECT contact_id, company_name FROM crm_contacts LIMIT 1").fetchone()
+            contact_id = c["contact_id"]
+            orig_company = c["company_name"]
+
+        # Update contact
+        resp = self.client.post(
+            f"/crm/contacts/{contact_id}",
+            data={
+                "contact_name": "資深業務協理",
+                "tax_id": "99887766",
+                "email": "updated@company.tw",
+                "phone": "02-9999-8888",
+            },
+            headers={"HX-Request": "true"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("成功更新客戶資料", resp.text)
+        self.assertIn("資深業務協理", resp.text)
+
+        # Verify company name was unchanged in DB
+        with self.db.transaction() as conn:
+            c_after = conn.execute("SELECT company_name, contact_name, phone FROM crm_contacts WHERE contact_id = ?", (contact_id,)).fetchone()
+            self.assertEqual(c_after["company_name"], orig_company)
+            self.assertEqual(c_after["contact_name"], "資深業務協理")
+            self.assertEqual(c_after["phone"], "02-9999-8888")
+
     def test_create_deal_and_stage_progression(self):
         # 1. Fetch contact ID
         contact_id = "CUST-TSM03"  # Seeded in demo_seed

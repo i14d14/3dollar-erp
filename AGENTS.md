@@ -79,6 +79,7 @@ Follow the file access matrix specified in [`ROADMAP.md`](file:///d:/3dollar_erp
   - Implement a Two-Tier Defense:
     1. *Tier 1 (Domain Services)*: Service exceptions intended for client display should formulate their human-readable message in Traditional Chinese (retaining technical IDs like SKU, Order ID, Warehouse ID).
     2. *Tier 2 (Web Layer / Exception Handler)*: The web exception handler (`app.py`) serves as an automated safety net, normalizing and translating any domain/system exception before injecting it into the toast banner.
+* **Browser Autofill Heuristics Acceptance**: Browser autofill behavior (e.g., Chromium/Edge contact suggestions for name, email, phone) is explicitly accepted as standard browser behavior. Do NOT implement complex workarounds (such as `readonly` toggles, fake inputs, or listeners) unless the user explicitly requests to revisit autofill. If browser autofill triggers inappropriately, ignore it until explicitly instructed otherwise.
 
 ---
 

@@ -133,12 +133,12 @@ def create_app(db: Optional[Database] = None, event_bus: Optional[EventBusPort] 
             return HTMLResponse(
                 content=f"""
                 <div id="toast-container" hx-swap-oob="innerHTML:#toast-container">
-                  <div class="p-3 my-2 text-xs text-rose-800 bg-rose-50 border border-rose-300 rounded-lg flex items-center justify-between shadow-sm">
-                    <div class="flex items-center gap-2">
-                      <span class="text-rose-600 font-bold text-sm">⚠️</span>
-                      <span class="font-medium">執行失敗: {user_msg}</span>
+                  <div class="p-3.5 my-2 text-xs text-rose-800 bg-rose-50 border border-rose-300 rounded-xl flex items-center justify-between shadow-xl">
+                    <div class="flex items-center gap-2.5">
+                      <span class="text-rose-600 font-bold text-base">⚠️</span>
+                      <span class="font-semibold text-rose-900 leading-snug">執行失敗: {user_msg}</span>
                     </div>
-                    <button onclick="document.getElementById('toast-container').innerHTML=''" class="text-rose-400 hover:text-rose-700 font-bold ml-2 text-base leading-none">&times;</button>
+                    <button onclick="document.getElementById('toast-container').innerHTML=''" class="text-rose-400 hover:text-rose-700 font-bold ml-3 text-lg leading-none">&times;</button>
                   </div>
                 </div>
                 """,
@@ -158,12 +158,12 @@ def create_app(db: Optional[Database] = None, event_bus: Optional[EventBusPort] 
             return HTMLResponse(
                 content=f"""
                 <div id="toast-container" hx-swap-oob="innerHTML:#toast-container">
-                  <div class="p-3 my-2 text-xs text-rose-800 bg-rose-50 border border-rose-300 rounded-lg flex items-center justify-between shadow-sm">
-                    <div class="flex items-center gap-2">
-                      <span class="text-rose-600 font-bold text-sm">🚨</span>
-                      <span class="font-medium">系統發生非預期異常，已記錄日誌，請稍後再試。</span>
+                  <div class="p-3.5 my-2 text-xs text-rose-800 bg-rose-50 border border-rose-300 rounded-xl flex items-center justify-between shadow-xl">
+                    <div class="flex items-center gap-2.5">
+                      <span class="text-rose-600 font-bold text-base">🚨</span>
+                      <span class="font-semibold text-rose-900 leading-snug">系統發生非預期異常，已記錄日誌，請稍後再試。</span>
                     </div>
-                    <button onclick="document.getElementById('toast-container').innerHTML=''" class="text-rose-400 hover:text-rose-700 font-bold ml-2 text-base leading-none">&times;</button>
+                    <button onclick="document.getElementById('toast-container').innerHTML=''" class="text-rose-400 hover:text-rose-700 font-bold ml-3 text-lg leading-none">&times;</button>
                   </div>
                 </div>
                 """,

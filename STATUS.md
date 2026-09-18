@@ -82,5 +82,8 @@
 | 2026-09-17 | 探吉會計驗收與全域錯誤中文化 | 完成帳齡天數色彩語意配套、會計試算表累計機制驗證、全域使用者錯誤訊息繁體中文化雙層防禦（AGENTS.md 守則固化、Serena 永久記憶、app.py 安全網、核心服務全面在地化），測試 42/42 PASS | PASS |
 | 2026-09-17 | EventBus 單例分裂根除與 DI 重構 | 核心領域服務 (__init__) 移除預設 default_event_bus 改為強制顯式注入；Web 路由全面採用 FastAPI Depends DI 提供者；tools/check_boundaries.py 加入 AST 規則嚴格禁止 default_event_bus 匯入；新增端到端跨層整合測試 (test_cross_layer_event_e2e.py)，驗收 44/44 PASS | PASS |
 | 2026-09-17 | Day 4 (哩來 CRM 前段商機) | 完成客戶主檔 (統編8碼校驗)、四段商機管線狀態機 (LEAD $\rightarrow$ DISCOVERY $\rightarrow$ PROPOSAL $\rightarrow$ WON/LOST)、python-docx 原生產生 Word 報價單與 PyMuPDF 原生產生防竄改 A4 報價單 PDF、贏單一鍵穿透拋轉 ERP 銷售訂單 (SO)、Zero-Build SSR Web 管理後台切片 (/crm 看板與客戶清冊)、全域繁體中文錯誤防護與展示資料種子，全套測試與架構邊界守護全數通過 (55/55 PASS) | PASS |
+| 2026-09-17 | CRM 互動體驗與通知層強化 | 解決瀏覽器 Autofill 搶填、修正彈窗成功後自動隱藏生命週期、將全域 #toast-container 提升為 z-[9999] 浮動頂層通知中心並經 Playwright 截圖驗收通過 (55/55 PASS) | PASS |
+| 2026-09-18 | CRM 使用者體驗三項優化 | 完成防止同名企業重複錄入防呆、客戶清冊列點擊開啟編輯彈窗 (公司名唯讀鎖定)、Word (.docx) 報價單表格內建 Table Grid 網格線，全套自動化測試與 Playwright 瀏覽器驗證全數通過 (56/56 PASS) | PASS |
+
 
 
