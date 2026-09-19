@@ -205,12 +205,40 @@ def seed_demo_data(db: Database, event_bus: EventBusPort) -> None:
                 if not po_exists:
                     conn.execute(
                         "INSERT INTO purchase_orders (po_id, supplier_name, status, total_amount) VALUES (?, ?, 'RECEIVED', ?)",
-                        (po_id, "祥茂電子精密工業", 30000.0),
+                        (po_id, "祥茂電子精密工業", 46000.0),
                     )
                     conn.execute(
                         "INSERT INTO goods_receipt_notes (grn_id, po_id, warehouse_id) VALUES (?, ?, 'WH-MAIN')",
                         (grn_id, po_id),
                     )
+                    def safe_insert_poi(item_id: str, p_id: str, sku: str, qty: float, cost: float, sub: float) -> None:
+                        if conn.execute("SELECT 1 FROM products WHERE sku = ?", (sku,)).fetchone():
+                            conn.execute(
+                                "INSERT OR IGNORE INTO purchase_order_items (po_item_id, po_id, sku, qty, unit_cost, subtotal) VALUES (?, ?, ?, ?, ?, ?)",
+                                (item_id, p_id, sku, qty, cost, sub),
+                            )
+
+                    safe_insert_poi("POI-INIT-01", po_id, "SKU-PRO-01", 20.0, 1500.0, 30000.0)
+                    safe_insert_poi("POI-INIT-02", po_id, "SKU-ACC-02", 50.0, 320.0, 16000.0)
+
+                    # Additional Supplier 2: 台科半導體供應商
+                    po_id_2 = "PO-HIST-TAI-02"
+                    conn.execute(
+                        "INSERT OR IGNORE INTO purchase_orders (po_id, supplier_name, status, total_amount) VALUES (?, ?, 'RECEIVED', ?)",
+                        (po_id_2, "台科半導體供應商", 39500.0),
+                    )
+                    safe_insert_poi("POI-HIST-03", po_id_2, "SKU-PRO-01", 15.0, 1420.0, 21300.0)
+                    safe_insert_poi("POI-HIST-04", po_id_2, "SKU-ACC-02", 30.0, 300.0, 9000.0)
+                    safe_insert_poi("POI-HIST-05", po_id_2, "SKU-IOT-03", 20.0, 460.0, 9200.0)
+
+                    # Additional Supplier 3: 遠東機電材料行
+                    po_id_3 = "PO-HIST-FAR-03"
+                    conn.execute(
+                        "INSERT OR IGNORE INTO purchase_orders (po_id, supplier_name, status, total_amount) VALUES (?, ?, 'RECEIVED', ?)",
+                        (po_id_3, "遠東機電材料行", 28700.0),
+                    )
+                    safe_insert_poi("POI-HIST-06", po_id_3, "SKU-PRO-01", 10.0, 1580.0, 15800.0)
+                    safe_insert_poi("POI-HIST-07", po_id_3, "SKU-IOT-03", 30.0, 430.0, 12900.0)
 
             accounting_service.create_accounts_payable(
                 po_id=po_id,

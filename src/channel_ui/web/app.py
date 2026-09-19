@@ -209,6 +209,15 @@ def create_app(
     app.include_router(crm_router)
     app.include_router(line_router)
 
+    # Dynamic plug-in discovery for Layer 4 (AI Wrapper) to preserve strict Layer 3 -> Layer 4 isolation
+    try:
+        import importlib
+        ai_module = importlib.import_module("src.ai_wrapper.web.routes")
+        if hasattr(ai_module, "router"):
+            app.include_router(ai_module.router)
+    except (ImportError, AttributeError):
+        pass
+
     return app
 
 

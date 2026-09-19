@@ -1,0 +1,165 @@
+<div class="space-y-6">
+
+  <!-- Status Alert Banner -->
+  {% if result.status == 'MATH_ERROR' %}
+  <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-900 text-xs">
+    <span class="text-xl">🚨</span>
+    <div>
+      <div class="font-bold">金額勾稽警報：發票金額邏輯異常</div>
+      <div class="text-rose-700">總金額不等於未稅銷售額加營業稅，請核對發票內容。</div>
+    </div>
+  </div>
+  {% elif result.status == 'ALREADY_RECORDED' %}
+  <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-900 text-xs">
+    <span class="text-xl">⚠️</span>
+    <div>
+      <div class="font-bold">可能重複之單據</div>
+      <div class="text-amber-700">系統中已存在同供應商且金額相符之應付帳款單據 ({{ result.existing_ap_id }})，請確認是否重複建檔。</div>
+    </div>
+  </div>
+  {% elif result.status == 'MATCHED_PO' %}
+  <div class="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center gap-3 text-blue-900 text-xs">
+    <span class="text-xl">🔗</span>
+    <div>
+      <div class="font-bold">成功自動媒合 ERP 採購單 (PO)</div>
+      <div class="text-blue-700">匹配採購單號：<span class="font-mono font-bold">{{ result.matched_po_id }}</span>，建立應付時將自動綁定該單據。</div>
+    </div>
+  </div>
+  {% else %}
+  <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-900 text-xs">
+    <span class="text-xl">✨</span>
+    <div>
+      <div class="font-bold">發票文字層解析完成且勾稽無誤</div>
+      <div class="text-emerald-700">台灣電子發票格式與金額校驗通過，可直接拋轉建立應付帳款與會計分錄。</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Extracted Metadata Card -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-100 pb-4">
+      <div>
+        <div class="text-xs text-slate-400">來源檔案: {{ filename }}</div>
+        <div class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <span>發票字軌號碼：</span>
+          <span class="font-mono text-indigo-600">{{ result.extracted.invoice_number }}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        {% if result.extracted.is_math_valid %}
+        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+          ✓ 金額勾稽吻合（未稅金額 + 營業稅額 = 總計金額）
+        </span>
+        {% else %}
+        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+          ✕ 金額算式不符（未稅金額 + 營業稅額 ≠ 總計金額）
+        </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 2x3 Grid of Extracted Attributes -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <div class="text-slate-400 mb-1">賣方營業人 (供應商)</div>
+        <div class="font-bold text-slate-800 text-sm">{{ result.extracted.seller_name or "未設置" }}</div>
+        <div class="text-slate-500 font-mono mt-0.5">統編: {{ result.extracted.seller_tax_id or "未設置" }}</div>
+      </div>
+
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <div class="text-slate-400 mb-1">買方營業人 (本公司)</div>
+        <div class="font-bold text-slate-800 text-sm">{{ result.extracted.buyer_name or "未設置" }}</div>
+        <div class="text-slate-500 font-mono mt-0.5">統編: {{ result.extracted.buyer_tax_id or "未設置" }}</div>
+      </div>
+
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <div class="text-slate-400 mb-1">開立日期與隨機碼</div>
+        <div class="font-bold text-slate-800 text-sm">{{ result.extracted.invoice_date or "未提取" }}</div>
+        <div class="text-slate-500 font-mono mt-0.5">隨機碼: {{ result.extracted.random_code or "----" }}</div>
+      </div>
+    </div>
+
+    <!-- Amount Breakdown Bar -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+      <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+        <div class="text-xs text-slate-500">銷售額 (未稅金額)</div>
+        <div class="text-lg font-mono font-bold text-slate-800 mt-1">
+          ${{ "{:,.0f}".format(result.extracted.sales_amount) }}
+        </div>
+      </div>
+
+      <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+        <div class="text-xs text-slate-500">營業稅額 (VAT 5%)</div>
+        <div class="text-lg font-mono font-bold text-slate-800 mt-1">
+          ${{ "{:,.0f}".format(result.extracted.tax_amount) }}
+        </div>
+      </div>
+
+      <div class="p-3.5 bg-indigo-50/60 rounded-xl border border-indigo-200">
+        <div class="text-xs text-indigo-700 font-medium">總計金額 (含稅)</div>
+        <div class="text-xl font-mono font-bold text-indigo-700 mt-1">
+          ${{ "{:,.0f}".format(result.extracted.total_amount) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Item Breakdown Table (if available) -->
+    {% if result.extracted.items %}
+    <div class="border border-slate-200 rounded-xl overflow-hidden mt-4">
+      <div class="bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 border-b border-slate-200">
+        發票提取品項明細
+      </div>
+      <table class="w-full text-left text-xs">
+        <thead>
+          <tr class="border-b border-slate-100 text-slate-400">
+            <th class="py-2.5 px-4">品名描述</th>
+            <th class="py-2.5 px-4 text-right">數量</th>
+            <th class="py-2.5 px-4 text-right">單價</th>
+            <th class="py-2.5 px-4 text-right">小計</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for itm in result.extracted.items %}
+          <tr>
+            <td class="py-2.5 px-4 font-medium text-slate-800">{{ itm.description }}</td>
+            <td class="py-2.5 px-4 text-right font-mono">{{ itm.qty | int }}</td>
+            <td class="py-2.5 px-4 text-right font-mono">${{ "{:,.0f}".format(itm.unit_price) }}</td>
+            <td class="py-2.5 px-4 text-right font-mono font-semibold text-slate-900">${{ "{:,.0f}".format(itm.amount) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- Action Confirmation Form -->
+    <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="text-xs text-slate-500">
+        確認無誤後，點擊右方按鈕即可一鍵寫入「探吉會計應付帳款」並自動認列會計傳票。
+      </div>
+
+      <form hx-post="/ai/invoice/confirm-ap"
+            hx-target="#invoice-result-container"
+            hx-indicator="#confirm-loading"
+            class="w-full sm:w-auto flex items-center gap-3">
+        <input type="hidden" name="invoice_number" value="{{ result.extracted.invoice_number }}">
+        <input type="hidden" name="seller_name" value="{{ result.extracted.seller_name or '外部供應商' }}">
+        <input type="hidden" name="seller_tax_id" value="{{ result.extracted.seller_tax_id or '' }}">
+        <input type="hidden" name="total_amount" value="{{ result.extracted.total_amount }}">
+        <input type="hidden" name="sales_amount" value="{{ result.extracted.sales_amount }}">
+        <input type="hidden" name="tax_amount" value="{{ result.extracted.tax_amount }}">
+        <input type="hidden" name="po_id" value="{{ result.matched_po_id or '' }}">
+
+        <button type="submit" class="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center justify-center gap-2">
+          <span>✓ 確認無誤，建立應付帳款 (AP)</span>
+        </button>
+
+        <span id="confirm-loading" class="htmx-indicator text-xs text-emerald-600 font-medium">
+          ⏳ 正在建立單據與分錄...
+        </span>
+      </form>
+    </div>
+
+  </div>
+
+</div>

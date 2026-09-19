@@ -7,10 +7,10 @@
 ### 專案進度儀表板 (Dashboard)
 
 * **專案名稱**：3Dollar ERP (三圓科技產品架構複製)
-* **當前衝刺階段**：Day 5 完成，推進 Day 6 (AI 增強外掛與檔案自動化 - BOM 表比價、PDF 發票抽取、Excel 報表匯出)
+* **當前衝刺階段**：Day 6 驗收通過，推進 Day 7 (全鏈路端到端整合與驗收)
 * **研發策略模式**：雙軌制（青春版基準 MVP 交付優先，架構插槽預留樂觀完整版）
-* **整體完成度**：71.4% [███████░░░]
-* **當前焦點任務**：Day 6 AI 增強外掛與檔案自動化（BOM 表 Excel 解析比價、原生 PDF 電子發票抽取、財務報表 Excel 串流生成與 Web 預覽切片）
+* **整體完成度**：88.5% [████████░░]
+* **當前焦點任務**：Day 7 全鏈路端到端整合與驗收（商機 $\rightarrow$ 報價 $\rightarrow$ 下單 $\rightarrow$ 出貨扣庫 $\rightarrow$ 會計出表 E2E 驗收與展示環境種子資料完備）
 * **當前阻礙 (Blockers)**：無阻礙 (None)
 * **最後更新時間**：2026-09-19
 
@@ -61,11 +61,17 @@
 - [x] **Task 5.7**: 真機對接與上線驗證（.env 換發 Stateless Token v3、Cloudflare Quick Tunnel TPE01 Webhook 綁定、LINE OA 後台關閉自動回覆、2500x843 亮色極簡 Rich Menu 上傳綁定、手機端 @337keuin E2E 實機抽測全數通過）
 - [x] **Task 5.8**: Flex Card 氣泡安全邊距與底部提示字級排版優化（Header/Footer 安全內距與文字對齊 QOL 修復）
 
-### 後續衝刺清單 (Day 6 ~ Day 7 待啟動)
-> 具體業務規格、驗收標準與雙軌裁切定義嚴格收錄於 [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md)，此處不展開單一行標題以杜絕假性滿足：
-* **Day 6**: AI 增強外掛與檔案自動化（BOM 表 Excel 解析比價、原生 PDF 電子發票抽取、報表匯出）
-* **Day 7**: 全鏈路端到端整合與驗收（商機 $\rightarrow$ 報價 $\rightarrow$ 下單 $\rightarrow$ 出貨扣庫 $\rightarrow$ 會計出表 E2E 驗收與種子資料）
+### [x] Day 6: AI 增強外掛與檔案自動化 (AI Wrapper & Native File Engine) - 已驗收
+> 規格詳細定義：[`ROADMAP.md#第四層外圍增強層ai-wrapper---自動化與知識外掛`](file:///d:/3dollar_erp/ROADMAP.md#第四層外圍增強層ai-wrapper---自動化與知識外掛)
+- [x] **Task 6.1**: BOM 表 Excel 批量解析與多供應商歷史比價（openpyxl 智慧表頭辨識、歷史採購單價格跨表比對、最低價供應商推薦與潛在節省金額試算）
+- [x] **Task 6.2**: 原生 PDF 電子發票文字層抽取與自動入帳（PyMuPDF/fitz 原生抽取 MIG 3.2.1/B2B 統一發票字軌、統編、金額，免 OCR 誤差，算式勾稽與 AP 一鍵拋轉）
+- [x] **Task 6.3**: 全方位財務與營運報表原生串流生成（xlsxwriter 產出損益表、試算表、帳齡矩陣、雙倉庫存盤點底冊 4 合 1 高階主管活頁簿，BOM 比價報表）
+- [x] **Task 6.4**: AI 增強外掛與檔案自動化 Web GUI 垂直切片（Zero-Build SSR：`/ai/tools` 三頁籤作業中心、拖曳上傳、示範 BOM/發票下載、HTMX 局部預覽卡片）
+- [x] **Task 6.5**: 4 層單向依賴嚴格解耦與全套自動化測試（動態外掛掛載，check_boundaries.py 零違規，全專案 72/72 PASS）
 
+### 後續衝刺清單 (Day 7 待啟動)
+> 具體業務規格、驗收標準與雙軌裁切定義嚴格收錄於 [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md)，此處不展開單一行標題以杜絕假性滿足：
+* **Day 7**: 全鏈路端到端整合與驗收（商機 $\rightarrow$ 報價 $\rightarrow$ 下單 $\rightarrow$ 出貨扣庫 $\rightarrow$ 會計出表 E2E 驗收與展示環境種子資料完備）
 
 ---
 
@@ -97,6 +103,10 @@
 | 2026-09-18 | Day 5 (LINE Bot 智能通路入口) | 完成 HMAC-SHA256 簽名校驗 Webhook、Flex Message 商品型錄輪播卡/收據卡/查單卡、Postback 一鍵穿透下單寫入 ERP (channel=LINE) 與鎖庫流程、自助文字查單、2500x843 緊湊型 Rich Menu 規格、Stateless Token v3 自動換發機制、全套離線仿真測試 (70/70 PASS)；標記待真機連通驗收 | 仿真 PASS (待真機) |
 | 2026-09-19 | Day 5 (Task 5.7 真機對接與上線驗收) | 完成真實金鑰 Stateless Token v3 換發、Cloudflare Quick Tunnel (TPE01) 自動化 Webhook 連通驗證、2500x843 亮色極簡 Rich Menu 預設綁定、真機手機端（@337keuin）加入好友、Flex 商品型錄瀏覽、一鍵穿透 ERP 下單鎖庫、自助查單全鏈路實機抽測全數通過 | PASS |
 | 2026-09-19 | Day 5 (Task 5.8 Flex 排版 QOL 優化) | 調整商品型錄、訂單建立、訂單進度 Flex 卡片 header/footer 安全邊距與字級行距，測試 70/70 PASS | PASS |
+| 2026-09-19 | Day 6 (AI 增強外掛與檔案自動化) | 完成 BOM 表 Excel 批量解析比價 (openpyxl)、原生 PDF 電子發票向量文字層抽取與自動建立 AP 應付帳款 (fitz/PyMuPDF)、全方位 4 合 1 財務與營運整合 Excel 串流生成 (xlsxwriter)、Zero-Build SSR 管理後台切片 (/ai/tools 與 HTMX 局部預覽)、Layer 3 與 Layer 4 動態外掛單向解耦，通過 check_boundaries 與全專案測試 (72/72 PASS) | PASS |
+| 2026-09-19 | Day 6 (Playwright 瀏覽器端到端驗收) | 依據驗收規格完成真實 Chromium 瀏覽器 5 大情境測試（頁籤無刷新切換、BOM 範本下載/上傳比價推薦、電子發票 PDF 抽取與一鍵建立 AP、4合1 財務報表串流匯出、探吉會計帳齡與試算表借貸平衡穿透驗收），全專案 87/87 測試全數通過，銷毀暫行驗收規格書 | PASS |
+| 2026-09-19 | Day 6 (使用者手動全功能真機驗收) | 使用者手動完成 5 大功能逐一驗證，修復示範發票 PDF 排版溢出、移除示範發票按鈕、更名為「下載 BOM 匯入範本」、買方未設置標準化、修正發票金額勾稽繁中公式與 PO 媒合重複防呆，全套測試 87/87 PASS，宣告 Day 6 驗收通過 | PASS |
+
 
 
 
