@@ -21,7 +21,10 @@ def build_catalog_flex(products: List[Dict[str, Any]]) -> FlexMessage:
                 "type": "box",
                 "layout": "vertical",
                 "backgroundColor": "#F8FAFC",
-                "paddingAll": "md",
+                "paddingTop": "14px",
+                "paddingBottom": "14px",
+                "paddingStart": "20px",
+                "paddingEnd": "20px",
                 "contents": [
                     {
                         "type": "text",
@@ -84,6 +87,10 @@ def build_catalog_flex(products: List[Dict[str, Any]]) -> FlexMessage:
             "footer": {
                 "type": "box",
                 "layout": "vertical",
+                "paddingTop": "12px",
+                "paddingBottom": "16px",
+                "paddingStart": "20px",
+                "paddingEnd": "20px",
                 "spacing": "sm",
                 "contents": [
                     {
@@ -157,7 +164,10 @@ def build_order_receipt_flex(
             "type": "box",
             "layout": "vertical",
             "backgroundColor": "#06C755",
-            "paddingAll": "md",
+            "paddingTop": "16px",
+            "paddingBottom": "16px",
+            "paddingStart": "20px",
+            "paddingEnd": "20px",
             "contents": [
                 {
                     "type": "text",
@@ -237,12 +247,16 @@ def build_order_receipt_flex(
             "type": "box",
             "layout": "vertical",
             "backgroundColor": "#F8FAFC",
-            "paddingAll": "sm",
+            "paddingTop": "14px",
+            "paddingBottom": "16px",
+            "paddingStart": "20px",
+            "paddingEnd": "20px",
             "contents": [
                 {
                     "type": "text",
                     "text": "本訂單已寫入 ERP 系統，後續出貨將即時發送物流通知。",
-                    "size": "xxs",
+                    "size": "xs",
+                    "lineSpacing": "4px",
                     "color": "#64748B",
                     "wrap": True,
                 }
@@ -356,7 +370,10 @@ def build_order_status_flex(
             "type": "box",
             "layout": "vertical",
             "backgroundColor": "#0284C7",
-            "paddingAll": "md",
+            "paddingTop": "16px",
+            "paddingBottom": "16px",
+            "paddingStart": "20px",
+            "paddingEnd": "20px",
             "contents": [
                 {
                     "type": "text",
@@ -408,12 +425,16 @@ def build_order_status_flex(
             "type": "box",
             "layout": "vertical",
             "backgroundColor": "#F8FAFC",
-            "paddingAll": "sm",
+            "paddingTop": "14px",
+            "paddingBottom": "16px",
+            "paddingStart": "20px",
+            "paddingEnd": "20px",
             "contents": [
                 {
                     "type": "text",
                     "text": "若對訂單狀態有任何疑問，可於聊天室直接回傳問題，將由客服為您確認。",
-                    "size": "xxs",
+                    "size": "xs",
+                    "lineSpacing": "4px",
                     "color": "#64748B",
                     "wrap": True,
                 }

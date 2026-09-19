@@ -82,6 +82,8 @@ def test_build_catalog_flex():
     assert button_action["type"] == "postback"
     assert "action=order&sku=SKU-A&qty=1" in button_action["data"]
     assert button_action["displayText"] == "我要訂購 1 份 測試商品 A"
+    assert first_bubble["header"]["paddingStart"] == "20px"
+    assert first_bubble["footer"]["paddingBottom"] == "16px"
 
 
 def test_build_order_receipt_flex():
@@ -101,6 +103,11 @@ def test_build_order_receipt_flex():
     data_dict = receipt.contents.to_dict()
     assert data_dict["type"] == "bubble"
     assert data_dict["header"]["contents"][0]["text"] == "訂單已成功建立"
+    assert data_dict["header"]["paddingStart"] == "20px"
+    assert data_dict["header"]["paddingTop"] == "16px"
+    assert data_dict["footer"]["paddingStart"] == "20px"
+    assert data_dict["footer"]["paddingBottom"] == "16px"
+    assert data_dict["footer"]["contents"][0]["size"] == "xs"
 
 
 def test_build_order_status_flex():
@@ -119,6 +126,11 @@ def test_build_order_status_flex():
     data_dict = status_msg.contents.to_dict()
     assert data_dict["type"] == "bubble"
     assert data_dict["header"]["contents"][0]["text"] == "訂單進度查詢結果"
+    assert data_dict["header"]["paddingStart"] == "20px"
+    assert data_dict["header"]["paddingTop"] == "16px"
+    assert data_dict["footer"]["paddingStart"] == "20px"
+    assert data_dict["footer"]["paddingBottom"] == "16px"
+    assert data_dict["footer"]["contents"][0]["size"] == "xs"
 
     # Check that tracking number and invoice number are in body
     body_str = json.dumps(data_dict["body"], ensure_ascii=False)
