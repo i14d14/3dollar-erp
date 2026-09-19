@@ -1,11 +1,18 @@
 from __future__ import annotations
+import os
 from pathlib import Path
 from typing import Optional
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
+from src.channel_ui.line_bot.ports import LineMessagingPort
+from src.channel_ui.line_bot.webhook import router as line_router
 from src.channel_ui.web.demo_seed import seed_demo_data
 from src.channel_ui.web.routes.accounting import router as accounting_router
 from src.channel_ui.web.routes.crm import router as crm_router
@@ -105,7 +112,12 @@ def format_user_error_message(detail: str) -> str:
 
 
 
-def create_app(db: Optional[Database] = None, event_bus: Optional[EventBusPort] = None) -> FastAPI:
+def create_app(
+    db: Optional[Database] = None,
+    event_bus: Optional[EventBusPort] = None,
+    line_messaging_port: Optional[LineMessagingPort] = None,
+    line_channel_secret: Optional[str] = None,
+) -> FastAPI:
     app = FastAPI(
         title="3Dollar ERP Web Admin",
         description="Zero-Build SSR Admin Web GUI for Dinkoko ERP (FastAPI + HTMX + Tailwind)",
@@ -123,6 +135,10 @@ def create_app(db: Optional[Database] = None, event_bus: Optional[EventBusPort] 
     app.state.event_bus = app_bus
     app.state.templates = templates
     app.state.view_service = view_service
+    app.state.line_messaging_port = line_messaging_port
+    app.state.line_channel_secret = (
+        line_channel_secret or os.environ.get("LINE_CHANNEL_SECRET", "mock_channel_secret")
+    )
 
     # Custom exception handler for HTMX requests
     @app.exception_handler(HTTPException)
@@ -144,6 +160,11 @@ def create_app(db: Optional[Database] = None, event_bus: Optional[EventBusPort] 
                 """,
                 status_code=exc.status_code,
                 headers={"HX-Reswap": "none"},
+            )
+        if request.url.path.startswith("/api/"):
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail},
             )
         # Default fallback
         return HTMLResponse(
@@ -170,6 +191,11 @@ def create_app(db: Optional[Database] = None, event_bus: Optional[EventBusPort] 
                 status_code=500,
                 headers={"HX-Reswap": "none"},
             )
+        if request.url.path.startswith("/api/"):
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "系統發生非預期異常"},
+            )
         return HTMLResponse(
             content="<h1>500 Internal Server Error</h1><p>系統發生非預期異常</p>",
             status_code=500,
@@ -181,6 +207,7 @@ def create_app(db: Optional[Database] = None, event_bus: Optional[EventBusPort] 
     app.include_router(inventory_router)
     app.include_router(accounting_router)
     app.include_router(crm_router)
+    app.include_router(line_router)
 
     return app
 

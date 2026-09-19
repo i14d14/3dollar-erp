@@ -128,6 +128,24 @@
   2. **Flex Message 下單**：直覺展示商品卡片與規格，點選後穿透寫入 ERP 生成訂單。
   3. **訂單進度查詢**：輸入訂單編號直接查詢 ERP 出貨與發票狀態。
   4. **固定式 Rich Menu**：下單、查單、常見問答三大入口。
+* 📌 **【真機連通與尚未完成之缺失項目 (Pending Real-World Verification)】**：
+  > 此清單為目前本機離線仿真已通過（70/70 PASS），但尚未與真實 LINE 平台聯調的缺失環節：
+  1. **真實金鑰與 Stateless Token v3 簽發實測**：
+     - 使用者需將真實的 `LINE_CHANNEL_ID` 與 `LINE_CHANNEL_SECRET` 填入 [`.env`](file:///d:/3dollar_erp/.env)。
+     - 啟動伺服器實測向 `POST https://api.line.me/oauth2/v3/token` 自動換發 15 分鐘短效憑證，驗證無憑證授權錯誤（HTTP 401）。
+  2. **公網 Webhook 穿透與連通性測試 (ngrok / Cloudflare Tunnel)**：
+     - 需啟動穿透工具（如 `ngrok http 8000`），將生成的公開 HTTPS 網址填入 LINE Developers 後台（Webhook URL：`https://.../api/line/webhook`）。
+     - 點擊後台「Verify」按鈕或呼叫 `POST /v2/bot/channel/webhook/test`，確認 LINE 官方伺服器能順利連通並返回 HTTP 200。
+  3. **LINE 官方帳號後台 (LINE OA Manager) 設定檢核**：
+     - 手動開啟「Webhook」開關（預設為 Disabled）。
+     - 手動關閉「聊天室自動回應訊息 / 預設罐頭回覆」（預設為 Enabled，不關閉會產生雙重回覆）。
+  4. **Rich Menu 實體點陣圖繪製與上傳綁定**：
+     - 製作一張符合硬性標準（寬度 2500px、高度 843px、小於 1MB、JPG/PNG）之實體圖片。
+     - 呼叫上傳端點將圖片掛載至 Rich Menu 並設定為官方帳號預設選單。
+  5. **真實手機端端到端 (E2E) 閉環抽測驗收**：
+     - 使用真實手機加入官方帳號好友。
+     - 點擊選單 $\rightarrow$ 收到 Flex 商品型錄卡片 $\rightarrow$ 點擊購買 $\rightarrow$ 收到訂單成立收據 $\rightarrow$ 驗證 ERP 後台訂單生成與庫存鎖定。
+     - 輸入「查單 {order_id}」 $\rightarrow$ 收到出貨與發票進度卡。
 * 🚀 **【樂觀完整版】（時間充裕時解鎖之進階功能）**：
   1. 完整多商品暫存購物車狀態機與優惠券折扣碼折抵。
   2. 無縫真人客服轉接後台。

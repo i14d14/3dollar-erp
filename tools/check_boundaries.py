@@ -66,9 +66,9 @@ def check_file(file_path: Path, forbidden_modules: List[str]) -> List[str]:
                     f"{file_path}:{lineno} - Architecture violation: forbidden import of '{module_name}'"
                 )
 
-    # Architectural Rule: Forbid default_event_bus in core services, web routes, and extended core
+    # Architectural Rule: Forbid default_event_bus in core services, web routes, line_bot, and extended core
     rel_path = file_path.relative_to(SRC_ROOT).as_posix()
-    forbidden_bus_prefixes = ["core/services", "channel_ui/web/routes", "extended_core"]
+    forbidden_bus_prefixes = ["core/services", "channel_ui/web/routes", "channel_ui/line_bot", "extended_core"]
     if any(rel_path.startswith(p) for p in forbidden_bus_prefixes):
         for lineno, module, symbols in visitor.detailed_imports:
             if "default_event_bus" in symbols:

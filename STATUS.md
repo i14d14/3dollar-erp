@@ -4,15 +4,15 @@
 > **SSOT 邊界守則**：本文件為**專案執行狀態與進度 (Where & Now)** 的唯一真相來源。
 > 所有規格標準、雙軌研發邊界（青春版 MVP 裁切 vs 樂觀完整版）與架構插槽規範，唯一權威來源為 [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md)。任何任務開工前，必須同時查閱此處進度與 `ROADMAP.md` 規格。
 
-## 專案進度儀表板 (Dashboard)
+### 專案進度儀表板 (Dashboard)
 
 * **專案名稱**：3Dollar ERP (三圓科技產品架構複製)
-* **當前衝刺階段**：Day 4 完成，推進 Day 5 (LINE Bot 智能通路入口)
+* **當前衝刺階段**：Day 5 完成，推進 Day 6 (AI 增強外掛與檔案自動化 - BOM 表比價、PDF 發票抽取、Excel 報表匯出)
 * **研發策略模式**：雙軌制（青春版基準 MVP 交付優先，架構插槽預留樂觀完整版）
-* **整體完成度**：57.1% [█████░░░░░]
-* **當前焦點任務**：Day 5 LINE Bot 智能通路入口（Webhook 簽名驗證、Flex Message 型錄與直接下單、查單）
-* **當前阻礙 (Blockers)**：無
-* **最後更新時間**：2026-09-17
+* **整體完成度**：71.4% [███████░░░]
+* **當前焦點任務**：Day 6 AI 增強外掛與檔案自動化（BOM 表 Excel 解析比價、原生 PDF 電子發票抽取、財務報表 Excel 串流生成與 Web 預覽切片）
+* **當前阻礙 (Blockers)**：無阻礙 (None)
+* **最後更新時間**：2026-09-19
 
 ---
 
@@ -50,9 +50,18 @@
 - [x] **Task 4.4**: 贏單 (WON) 一鍵穿透拋轉 ERP 銷售訂單（呼叫 OrderService 建立 CRM 通路 DRAFT 銷售訂單、converted_order_id 雙向關聯、報價單自動 ACCEPTED）
 - [x] **Task 4.5**: 哩來 CRM 營運管理 Web GUI 垂直切片（Zero-Build SSR：`/crm` 四欄式商機看板、客戶主檔分頁、報價單 DOCX/PDF 串流下載、一鍵轉 ERP 訂單）
 
-### 後續衝刺清單 (Day 5 ~ Day 7 待啟動)
+### [x] Day 5: LINE Bot 智能通路入口 (Channel & UI) - 已驗收 (100% 完成)
+> 規格詳細定義：[`ROADMAP.md#2-外部客戶輕量通路line-bot-智能對話入口`](file:///d:/3dollar_erp/ROADMAP.md#2-外部客戶輕量通路line-bot-智能對話入口)
+- [x] **Task 5.1**: Webhook 簽名防偽與事件分流（HMAC-SHA256 數位簽名檢驗、MessageEvent 與 PostbackEvent 派發）
+- [x] **Task 5.2**: Flex Message 視覺卡片構建器（遵循 LINE 官方 Pydantic 模型，商品型錄輪播卡、訂單成立收據卡、出貨/發票進度卡）
+- [x] **Task 5.3**: 一鍵穿透下單與鎖庫流程（Postback 一鍵下單 `channel_id="LINE"`，呼叫 OrderService 建立訂單並鎖庫，庫存不足自動取消並回傳繁中防呆通知）
+- [x] **Task 5.4**: 自助文字查單與進度回報（解析「查單 SO-xxx」，查詢訂單狀態、出貨單 DO、物流追蹤碼與電子發票號碼）
+- [x] **Task 5.5**: 緊湊型 Rich Menu 圖文選單配置規範（2500x843 畫布、3 格佈局 JSON 與 Pydantic 模型產生器）
+- [x] **Task 5.6**: 全鏈路離線仿真測試體系（`LineMessagingPort` 與 `MockLineMessagingAdapter`，無外部網路/真實密鑰依賴之 E2E 仿真測試 14/14 PASS）
+- [x] **Task 5.7**: 真機對接與上線驗證（.env 換發 Stateless Token v3、Cloudflare Quick Tunnel TPE01 Webhook 綁定、LINE OA 後台關閉自動回覆、2500x843 亮色極簡 Rich Menu 上傳綁定、手機端 @337keuin E2E 實機抽測全數通過）
+
+### 後續衝刺清單 (Day 6 ~ Day 7 待啟動)
 > 具體業務規格、驗收標準與雙軌裁切定義嚴格收錄於 [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md)，此處不展開單一行標題以杜絕假性滿足：
-* **Day 5**: LINE Bot 智能通路入口（Webhook 簽名驗證、Flex Message 型錄與直接下單、查單）
 * **Day 6**: AI 增強外掛與檔案自動化（BOM 表 Excel 解析比價、原生 PDF 電子發票抽取、報表匯出）
 * **Day 7**: 全鏈路端到端整合與驗收（商機 $\rightarrow$ 報價 $\rightarrow$ 下單 $\rightarrow$ 出貨扣庫 $\rightarrow$ 會計出表 E2E 驗收與種子資料）
 
@@ -84,6 +93,8 @@
 | 2026-09-17 | Day 4 (哩來 CRM 前段商機) | 完成客戶主檔 (統編8碼校驗)、四段商機管線狀態機 (LEAD $\rightarrow$ DISCOVERY $\rightarrow$ PROPOSAL $\rightarrow$ WON/LOST)、python-docx 原生產生 Word 報價單與 PyMuPDF 原生產生防竄改 A4 報價單 PDF、贏單一鍵穿透拋轉 ERP 銷售訂單 (SO)、Zero-Build SSR Web 管理後台切片 (/crm 看板與客戶清冊)、全域繁體中文錯誤防護與展示資料種子，全套測試與架構邊界守護全數通過 (55/55 PASS) | PASS |
 | 2026-09-17 | CRM 互動體驗與通知層強化 | 解決瀏覽器 Autofill 搶填、修正彈窗成功後自動隱藏生命週期、將全域 #toast-container 提升為 z-[9999] 浮動頂層通知中心並經 Playwright 截圖驗收通過 (55/55 PASS) | PASS |
 | 2026-09-18 | CRM 使用者體驗三項優化 | 完成防止同名企業重複錄入防呆、客戶清冊列點擊開啟編輯彈窗 (公司名唯讀鎖定)、Word (.docx) 報價單表格內建 Table Grid 網格線，全套自動化測試與 Playwright 瀏覽器驗證全數通過 (56/56 PASS) | PASS |
+| 2026-09-18 | Day 5 (LINE Bot 智能通路入口) | 完成 HMAC-SHA256 簽名校驗 Webhook、Flex Message 商品型錄輪播卡/收據卡/查單卡、Postback 一鍵穿透下單寫入 ERP (channel=LINE) 與鎖庫流程、自助文字查單、2500x843 緊湊型 Rich Menu 規格、Stateless Token v3 自動換發機制、全套離線仿真測試 (70/70 PASS)；標記待真機連通驗收 | 仿真 PASS (待真機) |
+| 2026-09-19 | Day 5 (Task 5.7 真機對接與上線驗收) | 完成真實金鑰 Stateless Token v3 換發、Cloudflare Quick Tunnel (TPE01) 自動化 Webhook 連通驗證、2500x843 亮色極簡 Rich Menu 預設綁定、真機手機端（@337keuin）加入好友、Flex 商品型錄瀏覽、一鍵穿透 ERP 下單鎖庫、自助查單全鏈路實機抽測全數通過 | PASS |
 
 
 
