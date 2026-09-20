@@ -7,10 +7,10 @@
 ### 專案進度儀表板 (Dashboard)
 
 * **專案名稱**：3Dollar ERP (三圓科技產品架構複製)
-* **當前衝刺階段**：Day 6 驗收通過，推進 Day 7 (全鏈路端到端整合與驗收)
+* **當前衝刺階段**：Day 7 全鏈路端到端整合與驗收完備，專案全案交付驗收通過
 * **研發策略模式**：雙軌制（青春版基準 MVP 交付優先，架構插槽預留樂觀完整版）
-* **整體完成度**：88.5% [████████░░]
-* **當前焦點任務**：Day 7 全鏈路端到端整合與驗收（商機 $\rightarrow$ 報價 $\rightarrow$ 下單 $\rightarrow$ 出貨扣庫 $\rightarrow$ 會計出表 E2E 驗收與展示環境種子資料完備）
+* **整體完成度**：100.0% [██████████]
+* **當前焦點任務**：專案完工交付、全系統 91/91 自動化測試驗證完備、操作手冊與演練腳本齊備
 * **當前阻礙 (Blockers)**：無阻礙 (None)
 * **最後更新時間**：2026-09-19
 
@@ -69,9 +69,12 @@
 - [x] **Task 6.4**: AI 增強外掛與檔案自動化 Web GUI 垂直切片（Zero-Build SSR：`/ai/tools` 三頁籤作業中心、拖曳上傳、示範 BOM/發票下載、HTMX 局部預覽卡片）
 - [x] **Task 6.5**: 4 層單向依賴嚴格解耦與全套自動化測試（動態外掛掛載，check_boundaries.py 零違規，全專案 72/72 PASS）
 
-### 後續衝刺清單 (Day 7 待啟動)
-> 具體業務規格、驗收標準與雙軌裁切定義嚴格收錄於 [`ROADMAP.md`](file:///d:/3dollar_erp/ROADMAP.md)，此處不展開單一行標題以杜絕假性滿足：
-* **Day 7**: 全鏈路端到端整合與驗收（商機 $\rightarrow$ 報價 $\rightarrow$ 下單 $\rightarrow$ 出貨扣庫 $\rightarrow$ 會計出表 E2E 驗收與展示環境種子資料完備）
+### [x] Day 7: 全鏈路端到端整合與驗收 (Final Full-Lifecycle E2E Integration & Delivery) - 已驗收 (100% 完成)
+> 規格詳細定義：[`ROADMAP.md#四-7-天雙軌時程規劃表-7-day-dual-track-sprint`](file:///d:/3dollar_erp/ROADMAP.md#四-7-天雙軌時程規劃表-7-day-dual-track-sprint)
+- [x] **Task 7.1**: 訂單生命週期狀態機完備（出貨與開票後自動晉級至 `COMPLETED` 完成狀態，雙向閉環校驗）
+- [x] **Task 7.2**: 展示環境豐富種子資料注入（`demo_seed.py` 擴充多通路 DIRECT / CRM / LINE 及 DRAFT / CONFIRMED / SHIPPED / COMPLETED 各階段示範單據）
+- [x] **Task 7.3**: 全鏈路端到端整合測試套件（`test_full_lifecycle_e2e.py` 覆蓋 B2B 商機轉單、B2C LINE 下單出貨查單、AI 檔案與會計 4-Way Match 全流程）
+- [x] **Task 7.4**: Playwright 真實瀏覽器端到端驗收（`test_playwright_day7_e2e.py` 串聯四大垂直切片 Web 互動，全專案 91/91 測試與架構防護 0 違規全數通過）
 
 ---
 
@@ -106,6 +109,7 @@
 | 2026-09-19 | Day 6 (AI 增強外掛與檔案自動化) | 完成 BOM 表 Excel 批量解析比價 (openpyxl)、原生 PDF 電子發票向量文字層抽取與自動建立 AP 應付帳款 (fitz/PyMuPDF)、全方位 4 合 1 財務與營運整合 Excel 串流生成 (xlsxwriter)、Zero-Build SSR 管理後台切片 (/ai/tools 與 HTMX 局部預覽)、Layer 3 與 Layer 4 動態外掛單向解耦，通過 check_boundaries 與全專案測試 (72/72 PASS) | PASS |
 | 2026-09-19 | Day 6 (Playwright 瀏覽器端到端驗收) | 依據驗收規格完成真實 Chromium 瀏覽器 5 大情境測試（頁籤無刷新切換、BOM 範本下載/上傳比價推薦、電子發票 PDF 抽取與一鍵建立 AP、4合1 財務報表串流匯出、探吉會計帳齡與試算表借貸平衡穿透驗收），全專案 87/87 測試全數通過，銷毀暫行驗收規格書 | PASS |
 | 2026-09-19 | Day 6 (使用者手動全功能真機驗收) | 使用者手動完成 5 大功能逐一驗證，修復示範發票 PDF 排版溢出、移除示範發票按鈕、更名為「下載 BOM 匯入範本」、買方未設置標準化、修正發票金額勾稽繁中公式與 PO 媒合重複防呆，全套測試 87/87 PASS，宣告 Day 6 驗收通過 | PASS |
+| 2026-09-19 | Day 7 (全鏈路端到端整合與驗收) | 完成訂單 COMPLETED 狀態機閉環、demo_seed 多通路 (DIRECT/CRM/LINE) 與多階段單據擴充、B2B/B2C/AI 三路全鏈路 E2E 測試 (test_full_lifecycle_e2e.py)、Playwright 瀏覽器端到端驗收 (test_playwright_day7_e2e.py)、架構邊界 0 違規，全專案 91/91 自動化測試 100% 通過，全案正式交付 | PASS |
 
 
 
