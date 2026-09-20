@@ -207,9 +207,11 @@ class OrderService:
                 """,
                 (do_id, order_id, warehouse_id, tracking),
             )
+            inv_row = conn.execute("SELECT 1 FROM invoices WHERE order_id = ?", (order_id,)).fetchone()
+            target_status = OrderStatus.COMPLETED.value if inv_row else OrderStatus.SHIPPED.value
             conn.execute(
                 "UPDATE sales_orders SET status = ? WHERE order_id = ?",
-                (OrderStatus.SHIPPED.value, order_id),
+                (target_status, order_id),
             )
 
         # 3. Generate logistics shipping label PDF via PrinterPort

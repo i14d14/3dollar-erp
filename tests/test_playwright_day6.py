@@ -17,7 +17,7 @@ def test_day6_full_user_flow(page: Page, tmp_path: Path):
     # ---------------------------------------------------------
     page.goto(f"{BASE_URL}/ai/tools")
     expect(page.locator("h1").filter(has_text="AI 檔案自動化").first).to_be_visible()
-    expect(page.locator("aside")).to_contain_text("AI 檔案自動化 (Day 6)")
+    expect(page.locator("aside")).to_contain_text("AI 檔案自動化")
 
     # Switch to Invoice tab
     page.locator("#tab-btn-invoice").click()

@@ -274,7 +274,7 @@ def test_one_click_order_and_status_query_flow(line_test_env):
     shipped_json = json.dumps(shipped_reply.messages[0].contents.to_dict(), ensure_ascii=False)
     assert "TRK-LINE-9988" in shipped_json
     assert invoice.invoice_number in shipped_json
-    assert "已出貨（物流配送中）" in shipped_json
+    assert "訂單已完成" in shipped_json
 
 
 def test_insufficient_stock_rejection(line_test_env):

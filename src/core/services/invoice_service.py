@@ -121,6 +121,14 @@ class InvoiceService:
                 ),
             )
 
+            # Advance order lifecycle to COMPLETED if already shipped or delivery order exists
+            do_row = conn.execute("SELECT 1 FROM delivery_orders WHERE order_id = ?", (order_id,)).fetchone()
+            if order_row["status"] == OrderStatus.SHIPPED.value or do_row:
+                conn.execute(
+                    "UPDATE sales_orders SET status = ? WHERE order_id = ?",
+                    (OrderStatus.COMPLETED.value, order_id),
+                )
+
         # 5. Render 5.7cm wide receipt PDF
         pdf_bytes = self.invoice_provider.render_invoice_pdf(invoice)
 

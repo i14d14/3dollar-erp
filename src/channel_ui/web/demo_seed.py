@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Optional
 
 from src.core.domain.inventory import ReferenceType
-from src.core.domain.order import OrderStatus
+from src.core.domain.order import OrderChannel, OrderStatus
 from src.core.ports.event_bus_port import EventBusPort
 from src.core.services.inventory_service import InventoryService
 from src.core.services.invoice_service import InvoiceService
@@ -135,6 +135,38 @@ def seed_demo_data(db: Database, event_bus: EventBusPort) -> None:
             shipping_address="台北市信義區松仁路100號",
         )
 
+        # Order 4: LINE Channel order (CONFIRMED & stock locked)
+        order_line = order_service.create_order(
+            customer_id="LINE客戶-林先生 (Ucustomer8888)",
+            channel=OrderChannel.LINE,
+            items=[
+                ("SKU-ACC-02", Decimal("2.0"), Decimal("650.0")),
+            ],
+        )
+        order_service.confirm_order(order_line.order_id, "WH-MAIN")
+
+        # Order 5: COMPLETED order (Fulfillment & Invoicing fully closed)
+        order_comp = order_service.create_order(
+            customer_id="CUST-DELTA-微視科技",
+            channel=OrderChannel.DIRECT,
+            items=[
+                ("SKU-PRO-01", Decimal("1.0"), Decimal("2500.0")),
+            ],
+        )
+        order_service.confirm_order(order_comp.order_id, "WH-MAIN")
+        order_service.ship_order(
+            order_id=order_comp.order_id,
+            warehouse_id="WH-MAIN",
+            recipient_name="黃協理",
+            recipient_phone="0933-221-100",
+            shipping_address="新北市新店區北新路一段10號",
+        )
+        invoice_service.issue_invoice_for_order(
+            order_id=order_comp.order_id,
+            buyer_tax_id="54321098",
+            buyer_name="微視科技有限公司",
+        )
+
     # 2. TanGii (探吉) Accounting Synchronization / Seeding
     if je_count == 0:
         # A. Initial capital injection
@@ -153,6 +185,13 @@ def seed_demo_data(db: Database, event_bus: EventBusPort) -> None:
         with db.transaction() as conn:
             invoices_rows = conn.execute("SELECT * FROM invoices").fetchall()
             for inv in invoices_rows:
+                je_exists = conn.execute(
+                    "SELECT 1 FROM journal_entries WHERE reference_id = ?",
+                    (inv["invoice_id"],),
+                ).fetchone()
+                if je_exists:
+                    continue
+
                 tot = Decimal(str(inv["total_amount"]))
                 tax = Decimal(str(inv["tax_amount"])) if inv["tax_amount"] else Decimal("0.0")
                 sales = tot - tax
@@ -176,6 +215,13 @@ def seed_demo_data(db: Database, event_bus: EventBusPort) -> None:
         with db.transaction() as conn:
             do_rows = conn.execute("SELECT do_id, order_id FROM delivery_orders").fetchall()
             for d in do_rows:
+                je_exists = conn.execute(
+                    "SELECT 1 FROM journal_entries WHERE reference_id = ?",
+                    (d["do_id"],),
+                ).fetchone()
+                if je_exists:
+                    continue
+
                 cost_row = conn.execute(
                     "SELECT SUM(ABS(qty_delta) * unit_cost) as c FROM stock_ledger WHERE reference_id = ?",
                     (d["do_id"],),
