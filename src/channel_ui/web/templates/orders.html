@@ -8,15 +8,17 @@
 
   <!-- Action Header -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 flex-wrap">
       <span class="text-sm font-medium text-slate-700">單據生命週期：</span>
       <span class="text-xs px-2 py-1 rounded bg-slate-100 text-slate-700 font-mono">DRAFT</span>
       <span class="text-slate-400">&rarr;</span>
       <span class="text-xs px-2 py-1 rounded bg-sky-100 text-sky-700 font-mono">CONFIRMED (鎖庫)</span>
       <span class="text-slate-400">&rarr;</span>
+      <span class="text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700 font-mono">PARTIAL (拆批)</span>
+      <span class="text-slate-400">/</span>
       <span class="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 font-mono">SHIPPED (扣庫)</span>
       <span class="text-slate-400">&rarr;</span>
-      <span class="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 font-mono">INV 開立 (四單對帳)</span>
+      <span class="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 font-mono">COMPLETED (四單勾稽)</span>
     </div>
     <div class="text-xs text-slate-500">
       共計 <span class="font-bold text-slate-800">{{ orders|length }}</span> 筆單據

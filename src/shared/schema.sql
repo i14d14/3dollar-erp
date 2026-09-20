@@ -86,17 +86,32 @@ CREATE TABLE IF NOT EXISTS sales_order_items (
     sku TEXT NOT NULL REFERENCES products(sku),
     qty NUMERIC NOT NULL,
     unit_price NUMERIC NOT NULL,
-    subtotal NUMERIC NOT NULL
+    subtotal NUMERIC NOT NULL,
+    shipped_quantity NUMERIC NOT NULL DEFAULT 0
 );
 
--- 6. Delivery Orders (DO) - One-click shipment
+-- 6. Delivery Orders (DO) & Partial Shipment Allocations (1:N)
 CREATE TABLE IF NOT EXISTS delivery_orders (
     do_id TEXT PRIMARY KEY,
-    order_id TEXT NOT NULL UNIQUE REFERENCES sales_orders(order_id),
+    order_id TEXT NOT NULL REFERENCES sales_orders(order_id),
     warehouse_id TEXT NOT NULL REFERENCES warehouses(warehouse_id),
     tracking_number TEXT,
     shipped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS delivery_allocations (
+    allocation_id TEXT PRIMARY KEY,
+    do_id TEXT NOT NULL REFERENCES delivery_orders(do_id) ON DELETE CASCADE,
+    order_id TEXT NOT NULL REFERENCES sales_orders(order_id),
+    item_id TEXT NOT NULL REFERENCES sales_order_items(item_id),
+    sku TEXT NOT NULL REFERENCES products(sku),
+    allocated_qty NUMERIC NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_orders_order_id ON delivery_orders(order_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_allocations_order ON delivery_allocations(order_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_allocations_do ON delivery_allocations(do_id);
 
 -- 7. Electronic Invoices (Taiwan MIG 3.2.1 Standardized Mock)
 CREATE TABLE IF NOT EXISTS invoices (

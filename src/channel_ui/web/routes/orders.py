@@ -99,6 +99,72 @@ async def ship_order_endpoint(
     )
 
 
+@router.post("/{order_id}/ship-partial", response_class=HTMLResponse)
+async def ship_partial_order_endpoint(
+    order_id: str,
+    request: Request,
+    templates: Jinja2Templates = Depends(get_templates),
+    view_service: WebViewService = Depends(get_view_service),
+    order_service: OrderService = Depends(get_order_service),
+):
+    form = await request.form()
+    items_to_ship = []
+    order = order_service.get_order(order_id)
+    for item in order.items:
+        key = f"qty_{item.item_id}"
+        if key in form and form[key]:
+            val = Decimal(str(form[key]))
+            if val > Decimal("0.0"):
+                items_to_ship.append((item.item_id, val))
+
+    try:
+        order_service.ship_order(
+            order_id=order_id,
+            warehouse_id="WH-MAIN",
+            recipient_name="收件客戶",
+            recipient_phone="0912-345-678",
+            shipping_address="台北市信義區信義路五段7號",
+            items_to_ship=items_to_ship if items_to_ship else None,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    dto = view_service.get_order_row(order_id)
+    if not dto:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/order_row.html",
+        context={"order": dto},
+    )
+
+
+@router.get("/{order_id}/deliveries")
+async def get_order_deliveries_endpoint(
+    order_id: str,
+    order_service: OrderService = Depends(get_order_service),
+):
+    deliveries = order_service.get_order_deliveries(order_id)
+    return [
+        {
+            "do_id": d.do_id,
+            "order_id": d.order_id,
+            "warehouse_id": d.warehouse_id,
+            "tracking_number": d.tracking_number,
+            "allocations": [
+                {
+                    "sku": a.sku,
+                    "allocated_qty": float(a.allocated_qty),
+                }
+                for a in d.allocations
+            ],
+        }
+        for d in deliveries
+    ]
+
+
+
 @router.post("/{order_id}/invoice", response_class=HTMLResponse)
 async def issue_invoice_endpoint(
     order_id: str,

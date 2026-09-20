@@ -29,6 +29,7 @@ from src.shared.database import Database, default_db
 STATUS_BADGES: Dict[str, str] = {
     "DRAFT": "bg-slate-100 text-slate-700 border border-slate-300",
     "CONFIRMED": "bg-sky-100 text-sky-700 border border-sky-300",
+    "PARTIALLY_SHIPPED": "bg-indigo-100 text-indigo-700 border border-indigo-300",
     "SHIPPED": "bg-amber-100 text-amber-700 border border-amber-300",
     "COMPLETED": "bg-emerald-100 text-emerald-700 border border-emerald-300",
     "CANCELLED": "bg-rose-100 text-rose-700 border border-rose-300",
@@ -120,7 +121,9 @@ class WebViewService:
                        inv.invoice_number,
                        ar.ar_id
                 FROM sales_orders so
-                LEFT JOIN delivery_orders do ON do.order_id = so.order_id
+                LEFT JOIN delivery_orders do ON do.do_id = (
+                    SELECT do_id FROM delivery_orders WHERE order_id = so.order_id ORDER BY rowid DESC LIMIT 1
+                )
                 LEFT JOIN invoices inv ON inv.order_id = so.order_id
                 LEFT JOIN accounts_receivable ar ON ar.order_id = so.order_id
                 ORDER BY so.created_at DESC
@@ -152,8 +155,8 @@ class WebViewService:
                     invoice_number=inv_num,
                     is_reconciled=is_reconciled,
                     can_confirm=(status == "DRAFT"),
-                    can_ship=(status == "CONFIRMED"),
-                    can_invoice=(status in ("CONFIRMED", "SHIPPED") and inv_num is None),
+                    can_ship=(status in ("CONFIRMED", "PARTIALLY_SHIPPED")),
+                    can_invoice=(status in ("CONFIRMED", "PARTIALLY_SHIPPED", "SHIPPED") and inv_num is None),
                     has_shipping_label=bool(do_id),
                     has_invoice_pdf=bool(inv_num),
                 )
@@ -169,7 +172,9 @@ class WebViewService:
                        inv.invoice_number,
                        ar.ar_id
                 FROM sales_orders so
-                LEFT JOIN delivery_orders do ON do.order_id = so.order_id
+                LEFT JOIN delivery_orders do ON do.do_id = (
+                    SELECT do_id FROM delivery_orders WHERE order_id = so.order_id ORDER BY rowid DESC LIMIT 1
+                )
                 LEFT JOIN invoices inv ON inv.order_id = so.order_id
                 LEFT JOIN accounts_receivable ar ON ar.order_id = so.order_id
                 WHERE so.order_id = ?
@@ -200,8 +205,8 @@ class WebViewService:
             invoice_number=inv_num,
             is_reconciled=is_reconciled,
             can_confirm=(status == "DRAFT"),
-            can_ship=(status == "CONFIRMED"),
-            can_invoice=(status in ("CONFIRMED", "SHIPPED") and inv_num is None),
+            can_ship=(status in ("CONFIRMED", "PARTIALLY_SHIPPED")),
+            can_invoice=(status in ("CONFIRMED", "PARTIALLY_SHIPPED", "SHIPPED") and inv_num is None),
             has_shipping_label=bool(do_id),
             has_invoice_pdf=bool(inv_num),
         )

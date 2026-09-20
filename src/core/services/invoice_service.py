@@ -121,9 +121,22 @@ class InvoiceService:
                 ),
             )
 
-            # Advance order lifecycle to COMPLETED if already shipped or delivery order exists
+            # Advance order lifecycle to COMPLETED if fully shipped (no remaining unshipped items)
+            rem_check = conn.execute(
+                """
+                SELECT SUM(qty - COALESCE(shipped_quantity, 0)) as remaining
+                FROM sales_order_items
+                WHERE order_id = ?
+                """,
+                (order_id,),
+            ).fetchone()
+            rem = (
+                Decimal(str(rem_check["remaining"]))
+                if rem_check and rem_check["remaining"] is not None
+                else Decimal("0.0")
+            )
             do_row = conn.execute("SELECT 1 FROM delivery_orders WHERE order_id = ?", (order_id,)).fetchone()
-            if order_row["status"] == OrderStatus.SHIPPED.value or do_row:
+            if (order_row["status"] == OrderStatus.SHIPPED.value or do_row) and rem <= Decimal("0.0"):
                 conn.execute(
                     "UPDATE sales_orders SET status = ? WHERE order_id = ?",
                     (OrderStatus.COMPLETED.value, order_id),

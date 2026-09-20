@@ -40,6 +40,12 @@ class Database:
             schema_sql = f.read()
         with self.transaction() as conn:
             conn.executescript(schema_sql)
+            try:
+                cols = [r["name"] for r in conn.execute("PRAGMA table_info(sales_order_items)").fetchall()]
+                if cols and "shipped_quantity" not in cols:
+                    conn.execute("ALTER TABLE sales_order_items ADD COLUMN shipped_quantity NUMERIC NOT NULL DEFAULT 0;")
+            except Exception:
+                pass
 
 # Global default database instance
 default_db = Database()

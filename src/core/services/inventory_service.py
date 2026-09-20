@@ -386,11 +386,18 @@ class InventoryService:
                     f"查無訂單 {order_id} 於倉庫 {warehouse_id} 針對品號 {sku} 之有效鎖庫記錄 (Stock lock not found)"
                 )
 
-            # Update lock status
-            conn.execute(
-                "UPDATE stock_locks SET status = 'FULFILLED' WHERE lock_id = ?",
-                (lock_row["lock_id"],),
-            )
+            # Update lock status: if partial fulfillment, reduce locked quantity; if complete, mark FULFILLED
+            locked_amount = Decimal(str(lock_row["locked_qty"]))
+            if qty < locked_amount:
+                conn.execute(
+                    "UPDATE stock_locks SET locked_qty = ? WHERE lock_id = ?",
+                    (float(locked_amount - qty), lock_row["lock_id"]),
+                )
+            else:
+                conn.execute(
+                    "UPDATE stock_locks SET status = 'FULFILLED' WHERE lock_id = ?",
+                    (lock_row["lock_id"],),
+                )
 
             # Deduct physical stock
             current_balance = self._get_balance_internal(conn, warehouse_id, sku)
