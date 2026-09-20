@@ -7,12 +7,12 @@
 ### 專案進度儀表板 (Dashboard)
 
 * **專案名稱**：3Dollar ERP (三圓科技產品架構複製)
-* **當前衝刺階段**：Day 7 全鏈路端到端整合與驗收完備，專案全案交付驗收通過
-* **研發策略模式**：雙軌制（青春版基準 MVP 交付優先，架構插槽預留樂觀完整版）
-* **整體完成度**：100.0% [██████████]
-* **當前焦點任務**：專案完工交付、全系統 91/91 自動化測試驗證完備、操作手冊與演練腳本齊備
+* **當前衝刺階段**：滿血版第 1 批（底層基建與核心彈性）全數驗收通過，推進第 2 批（次核心業務深化）
+* **研發策略模式**：雙軌制（青春版基準 MVP 交付完畢，滿血版四階段推進中）
+* **整體完成度**：100.0% [██████████]（青春版 100% + 滿血版第 1 批完工）
+* **當前焦點任務**：滿血版第 1 批交付歸檔、全系統 100/100 自動化測試全數通過、推進第 2 批次核心業務深化
 * **當前阻礙 (Blockers)**：無阻礙 (None)
-* **最後更新時間**：2026-09-19
+* **最後更新時間**：2026-09-20
 
 ---
 
@@ -76,6 +76,12 @@
 - [x] **Task 7.3**: 全鏈路端到端整合測試套件（`test_full_lifecycle_e2e.py` 覆蓋 B2B 商機轉單、B2C LINE 下單出貨查單、AI 檔案與會計 4-Way Match 全流程）
 - [x] **Task 7.4**: Playwright 真實瀏覽器端到端驗收（`test_playwright_day7_e2e.py` 串聯四大垂直切片 Web 互動，全專案 91/91 測試與架構防護 0 違規全數通過）
 
+### [x] Full Expansion Batch 1: 底層基建與核心彈性 (Core Resilience & DB Migration) - 已驗收 (100% 完成)
+> 規格詳細定義：[`ROADMAP.md#第-1-批底層基建與核心彈性-core-resilience--db-migration`](file:///d:/3dollar_erp/ROADMAP.md#第-1-批底層基建與核心彈性-core-resilience--db-migration)
+- [x] **Task B1.1**: PostgreSQL 抽象與 Alembic 版本控制（雙引擎 `Database`、參數標記 `?` $\rightarrow$ `%s` 透明轉譯、`UnifiedRow` 索引/鍵名雙模式存取、Alembic 001 基準腳本）
+- [x] **Task B1.2**: 1:N 訂單拆批出貨與累計核銷（`delivery_allocations` 關聯表、`shipped_quantity` 累計、`PARTIALLY_SHIPPED` 狀態機、1:1 零破壞向下相容）
+- [x] **Task B1.3**: A4 多格標籤排版適配（`PdfPrinterAdapter` 實作 2x2 A4 標籤紙排版、支援起印位置選取與自動跨頁、`/orders/{id}/label_a4.pdf` 下載入口）
+
 ---
 
 ## 驗收日誌 (Verification Log)
@@ -110,6 +116,8 @@
 | 2026-09-19 | Day 6 (Playwright 瀏覽器端到端驗收) | 依據驗收規格完成真實 Chromium 瀏覽器 5 大情境測試（頁籤無刷新切換、BOM 範本下載/上傳比價推薦、電子發票 PDF 抽取與一鍵建立 AP、4合1 財務報表串流匯出、探吉會計帳齡與試算表借貸平衡穿透驗收），全專案 87/87 測試全數通過，銷毀暫行驗收規格書 | PASS |
 | 2026-09-19 | Day 6 (使用者手動全功能真機驗收) | 使用者手動完成 5 大功能逐一驗證，修復示範發票 PDF 排版溢出、移除示範發票按鈕、更名為「下載 BOM 匯入範本」、買方未設置標準化、修正發票金額勾稽繁中公式與 PO 媒合重複防呆，全套測試 87/87 PASS，宣告 Day 6 驗收通過 | PASS |
 | 2026-09-19 | Day 7 (全鏈路端到端整合與驗收) | 完成訂單 COMPLETED 狀態機閉環、demo_seed 多通路 (DIRECT/CRM/LINE) 與多階段單據擴充、B2B/B2C/AI 三路全鏈路 E2E 測試 (test_full_lifecycle_e2e.py)、Playwright 瀏覽器端到端驗收 (test_playwright_day7_e2e.py)、架構邊界 0 違規，全專案 91/91 自動化測試 100% 通過，全案正式交付 | PASS |
+| 2026-09-20 | 滿血版第 1 批 (底層基建與核心彈性) | 完成 PostgreSQL 雙引擎轉接抽象、Alembic 001 遷移設定、1:N 訂單拆批出貨 (delivery_allocations / PARTIALLY_SHIPPED)、辦公室多格 A4 標籤貼紙 (2x2) 產生與下載，全套測試 100/100 PASS，架構邊界 0 違規 | PASS |
+
 
 
 

@@ -36,7 +36,7 @@ python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
 | 功能頁面 | 瀏覽器網址 | 功能描述與重點作業 |
 | :--- | :--- | :--- |
 | **營運即時儀表板** | [`http://127.0.0.1:8000/`](http://127.0.0.1:8000/) | 即時展示 4 大 KPI 卡片（今日訂單、待出貨、安全存量警報、未沖銷 AR）、低存量預警清單、近期訂單列表。 |
-| **訂單與出貨作業** | [`http://127.0.0.1:8000/orders`](http://127.0.0.1:8000/orders) | 管理銷售訂單（SO），支援 HTMX 無刷新「一鍵鎖庫」、「一鍵出貨」、「開立發票」與原生 PDF 下載。 |
+| **訂單與出貨作業** | [`http://127.0.0.1:8000/orders`](http://127.0.0.1:8000/orders) | 管理銷售訂單（SO），支援 HTMX 無刷新「一鍵鎖庫」、「一鍵出貨」、「拆批出貨」、「開立發票」與原生 100x150mm 熱感 / 多格 A4 標籤貼紙串流下載。 |
 | **多倉庫存與流水** | [`http://127.0.0.1:8000/inventory`](http://127.0.0.1:8000/inventory) | 主倉與門市倉存量對照、原子性調撥表單、Append-Only 雙記帳庫存異動流水（Stock Ledger）。 |
 | **探吉 會計記帳** | [`http://127.0.0.1:8000/accounting`](http://127.0.0.1:8000/accounting) | 總分類帳試算表、多步驟損益表、應收 (AR)/應付 (AP) 4 區間帳齡分析、借貸平衡傳票登錄、款項沖銷與 Excel (.xlsx) 匯出。 |
 | **哩來 CRM 商機** | [`http://127.0.0.1:8000/crm`](http://127.0.0.1:8000/crm) | 四段商機管線看板（LEAD $\rightarrow$ DISCOVERY $\rightarrow$ PROPOSAL $\rightarrow$ WON/LOST）、客戶主檔管理、多品項商業報價單產出、Word (.docx) / 原生防竄改 PDF 串流下載、贏單一鍵轉 ERP 銷售訂單。 |
@@ -52,7 +52,7 @@ python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
 進入 **「訂單與出貨作業」**（`/orders`），單據依序遵循剛性狀態機流轉：
 
 ```
-[DRAFT 草稿] ──(鎖庫確認)──> [CONFIRMED 已確認] ──(一鍵出貨)──> [SHIPPED 已出貨] ──(開立發票)──> [COMPLETED 已完成 (四單剛性勾稽)]
+[DRAFT 草稿] ──(鎖庫確認)──> [CONFIRMED 已確認] ──(一鍵/拆批出貨)──> [PARTIAL / SHIPPED] ──(開立發票)──> [COMPLETED 已完成 (四單剛性勾稽)]
 ```
 
 1. **鎖庫確認（Confirm Order）**：

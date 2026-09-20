@@ -202,12 +202,12 @@
 
 基於「演進式架構」與「低破壞性相容」原則，將樂觀完整版功能依照高風險底層優先、由內而外的順序拆為 4 批獨立衝刺。每批均維持獨立可交付、單元測試與端到端驗收標準。
 
-### 【第 1 批】底層基建與核心彈性 (Core Resilience & DB Migration)
+### 【第 1 批】底層基建與核心彈性 (Core Resilience & DB Migration) - ✅ 已交付
 * **定位**：封裝最深層之資料結構變更，鎖定底層穩定性，確保後續批次零破壞。
 * **主要任務**：
-  1. **PostgreSQL 遷移與 Alembic 版本控制**：建立生產級資料庫配置與遷移腳本，保證既有 91/91 測試在 PostgreSQL 環境下 100% 通過。
-  2. **1:N 訂單拆批出貨與勾稽擴充**：引入出貨分配關聯表 (`delivery_allocations`)，訂單維護累計出貨量 (`shipped_quantity`)，既有 1:1 視為單次核銷特例，四單勾稽向後相容。
-  3. **A4 標籤排版適配**：優化 [`PdfPrinterAdapter`](file:///d:/3dollar_erp/ROADMAP.md#L75)，產出相容一般辦公室印表機之多格 A4 標籤貼紙版面，免除 ZPL 硬體標籤機依賴。
+  1. [x] **PostgreSQL 遷移與 Alembic 版本控制**：建立雙引擎資料庫抽象與遷移腳本，參數標記 `?` $\rightarrow$ `%s` 透明轉譯，`UnifiedRow` 索引/鍵名雙模式存取。
+  2. [x] **1:N 訂單拆批出貨與勾稽擴充**：引入出貨分配關聯表 (`delivery_allocations`)，訂單維護累計出貨量 (`shipped_quantity`)，`PARTIALLY_SHIPPED` 狀態機，既有 1:1 視為單次核銷特例，四單勾稽向下相容。
+  3. [x] **A4 標籤排版適配**：優化 [`PdfPrinterAdapter`](file:///d:/3dollar_erp/ROADMAP.md#L75)，實作 2x2 多格 A4 標籤貼紙排版、支援起印位置選取與自動分頁，免除 ZPL 硬體標籤機依賴。
 
 ### 【第 2 批】次核心業務深化 (Extended Core: Accounting, CRM & Lightweight HR)
 * **定位**：在穩定核心之上拓展次核心業務深度，全功能本機閉環，無外部網路阻礙。
