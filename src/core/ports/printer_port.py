@@ -15,8 +15,18 @@ class ShippingLabelData(DomainModel):
 
 class PrinterPort(ABC):
     @abstractmethod
-    def generate_shipping_label_pdf(self, label_data: ShippingLabelData) -> bytes:
-        """Generate a standardized logistics shipping label PDF (e.g. 100x150mm)."""
+    def generate_shipping_label_pdf(self, label_data: ShippingLabelData, page_format: str = "100x150") -> bytes:
+        """Generate a standardized logistics shipping label PDF (100x150mm or single A4)."""
+        pass
+
+    @abstractmethod
+    def generate_a4_shipping_labels_pdf(
+        self,
+        labels: List[ShippingLabelData],
+        layout: str = "2x2",
+        start_position: int = 1,
+    ) -> bytes:
+        """Generate multi-label sticker sheets on standard A4 paper (2x2 4-up)."""
         pass
 
     @abstractmethod

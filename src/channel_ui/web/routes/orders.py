@@ -160,6 +160,37 @@ async def download_shipping_label(
     )
 
 
+@router.get("/{order_id}/label_a4.pdf")
+async def download_shipping_label_a4(
+    order_id: str,
+    db: Database = Depends(get_db),
+):
+    with db.transaction() as conn:
+        row = conn.execute(
+            "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ? ORDER BY rowid DESC LIMIT 1",
+            (order_id,),
+        ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="找不到該訂單之出貨單據 (Delivery order not found)")
+
+    printer = PdfPrinterAdapter()
+    label_data = ShippingLabelData(
+        do_id=row["do_id"],
+        order_id=row["order_id"],
+        recipient_name="收件客戶",
+        recipient_phone="0912-345-678",
+        shipping_address="台北市信義區信義路五段7號",
+        tracking_number=row["tracking_number"] or "TRK-UNKNOWN",
+    )
+    pdf_bytes = printer.generate_shipping_label_pdf(label_data, page_format="A4")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=shipping_label_a4_{order_id}.pdf"},
+    )
+
+
 @router.get("/{order_id}/invoice.pdf")
 async def download_invoice_pdf(
     order_id: str,
