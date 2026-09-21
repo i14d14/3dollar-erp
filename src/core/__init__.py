@@ -1,1 +1,1 @@
-# Layer 1: Core Engine - Dinkoko ERP
+# Layer 1: Core Engine - Dura ERP

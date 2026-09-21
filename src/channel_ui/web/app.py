@@ -120,7 +120,7 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(
         title="3Dollar ERP Web Admin",
-        description="Zero-Build SSR Admin Web GUI for Dinkoko ERP (FastAPI + HTMX + Tailwind)",
+        description="Zero-Build SSR Admin Web GUI for Dura ERP (FastAPI + HTMX + Tailwind)",
         version="1.0.0",
     )
 

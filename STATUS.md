@@ -24,14 +24,14 @@
 - [x] **Task 1.3**: 設定架構邊界防護與相依性檢查器（AST 規則防護與 test_architecture_rules.py）
 - [x] **Task 1.4**: 實作基礎 Data Access / Repository 層與資料庫連接驗證測試
 
-### [x] Day 2: Dinkoko ERP 核心流程 (Core Engine) - 已驗收
-> 規格詳細定義：[`ROADMAP.md#第一層核心層dinkoko-erp---營運與單據中樞`](file:///d:/3dollar_erp/ROADMAP.md#第一層核心層dinkoko-erp---營運與單據中樞)
+### [x] Day 2: Dura ERP 核心流程 (Core Engine) - 已驗收
+> 規格詳細定義：[`ROADMAP.md#第一層核心層dura-erp---營運與單據中樞`](file:///d:/3dollar_erp/ROADMAP.md#第一層核心層dura-erp---營運與單據中樞)
 - [x] **Task 2.1**: 多倉庫存管理與調撥邏輯（落實 ROADMAP 青春版 MVP：主倉/門市雙倉流水、虛擬鎖庫、防負庫存）
 - [x] **Task 2.2**: 採購進貨流程與入庫單據處理（落實 ROADMAP 青春版 MVP：PO $\rightarrow$ GRN 移動平均成本計價）
 - [x] **Task 2.3**: 訂單管理與出貨扣庫一條龍（落實 ROADMAP 青春版 MVP：一鍵轉出貨單 DO、PDF 標籤）
 - [x] **Task 2.4**: 台灣電子發票開立與四單自動對帳（落實 ROADMAP 青春版 MVP：MIG 3.2.1 MockProvider、SO 1:1 DO 1:1 INV 1:1 AR 剛性對帳）
 - [x] **Task 2.5**: 每日自動化排程引擎（落實 ROADMAP 青春版 MVP：低安全存量掃描、逾期應收單據掃描）
-- [x] **Task 2.6**: Dinkoko ERP 營運管理 Web GUI 垂直切片（落實 Zero-Build SSR：儀表板 KPI、訂單與出貨 HTMX 局部更新、物流標籤與發票 PDF 串流、多倉調撥表）
+- [x] **Task 2.6**: Dura ERP 營運管理 Web GUI 垂直切片（落實 Zero-Build SSR：儀表板 KPI、訂單與出貨 HTMX 局部更新、物流標籤與發票 PDF 串流、多倉調撥表）
 
 ### [x] Day 3: 探吉 (TanGii) 會計與記帳系統 (Extended Core) - 已驗收
 > 規格詳細定義：[`ROADMAP.md#2-探吉-tangi-記帳系統業務後段管理會計與內帳`](file:///d:/3dollar_erp/ROADMAP.md#2-探吉-tangi-記帳系統業務後段管理會計與內帳)
@@ -130,6 +130,7 @@
 | 2026-09-20 | 滿血版第 1 批 (Headed Playwright 真人 UI 驗收) | 依據使用者明確指令啟動 Headed Playwright 真實瀏覽器，全流程驗收拆批超額防呆、1:N 出貨歷程彈窗、A4 視覺化起印選取 (start_pos=3)、狀態機完整閉環與 5 大模組導覽，test_playwright_batch1.py 1/1 PASS | PASS |
 | 2026-09-20 | 架構防禦 (發票與應收 1:1 約束解除) | 完成 schema.sql、migrations 001 及實體 erp.db 重建，解除 invoices.order_id 與 accounts_receivable.order_id 之 UNIQUE 約束並補齊索引，新增多單據資料庫測試 test_invoices_and_ar_allow_multiple_per_order，單元與架構邊界 0 違規全數 PASS | PASS |
 | 2026-09-21 | 滿血版第 1 批 (使用者全功能真機手動驗收) | 使用者手動完成 1:N 拆批出貨、超額防呆、A4 標籤直向預覽適配、出貨歷程時間戳記展示、全域彈窗容器跨頁強化全面驗收通過，全系統 102/102 測試通過，宣告滿血版第 1 批正式交付完工 | PASS |
+| 2026-09-21 | 核心引擎更名 (Dinkoko ➔ Dura ERP) | 貫徹「不使用模仿對象真實名字」原則，全面重命名核心引擎為 Dura ERP。完成 AGENTS.md、ROADMAP.md、STATUS.md、README.md、FastAPI Swagger OpenAPI 描述、LineBotService 與核心註釋共 8 處同步更新，修正跨文件跳轉錨點；全代碼庫全文搜尋 0 殘留，架構邊界 0 違規，全量 79/79 單元測試全數通過 | PASS |
 
 
 

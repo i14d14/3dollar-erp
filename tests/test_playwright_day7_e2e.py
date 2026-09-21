@@ -19,7 +19,7 @@ def test_day7_unified_full_system_e2e(page: Page, tmp_path: Path):
     """
 
     # -------------------------------------------------------------------------
-    # 1. ERP Dashboard & Order Lifecycle (Dinkoko ERP)
+    # 1. ERP Dashboard & Order Lifecycle (Dura ERP)
     # -------------------------------------------------------------------------
     page.goto(f"{BASE_URL}/")
     expect(page.locator("h1").filter(has_text="營運即時儀表板").first).to_be_visible()

@@ -43,7 +43,7 @@
 | | **ERP / 會計期初匯入** | 讀取既有客戶清冊、庫存底冊、會計科目，進行欄位對齊與批次寫入資料庫 | openpyxl |
 | | **財務助理 / 銀行對帳** | 直接讀取網銀匯出之交易明細檔，與系統內的應收應付單據逐筆自動勾稽 | openpyxl |
 | | **探吉 (TanGii) 財務報表** | 產出標準格式之資產負債表、損益表、現金流量表，供財務主管二次計算 | xlsxwriter |
-| **PDF** (.pdf) | **Dinkoko ERP 發票/單據** | 電子發票證明聯、進出貨單據、銷貨扣庫單之文字層原生抽取與 PDF 產出 | pymupdf (fitz) |
+| **PDF** (.pdf) | **Dura ERP 發票/單據** | 電子發票證明聯、進出貨單據、銷貨扣庫單之文字層原生抽取與 PDF 產出 | pymupdf (fitz) |
 | | **哩來 (LiLai) CRM 文件中心** | 原生解析回簽報價單與合約內容，比對條款與金額差異；產出防竄改 PDF | pymupdf (fitz) |
 | | **AI 發票助理** | 直接抽取廠商原生 PDF 電子發票之統編、明細、金額，免去圖片 OCR 失真 | pymupdf (fitz) |
 | **DOCX** (.docx) | **哩來 (LiLai) CRM 合約管理** | 讀取 Word 合約範本，依商機動態抽換客戶統編、條款與金額，產出可編輯草稿 | python-docx |
@@ -61,13 +61,13 @@
 ├────────────────────────────────────────────────────────┤
 │ Layer 2: Extended Core (次核心層: CRM & Accounting)    │
 ├────────────────────────────────────────────────────────┤
-│ Layer 1: Core Engine (核心引擎層: Dinkoko ERP)         │
+│ Layer 1: Core Engine (核心引擎層: Dura ERP)            │
 └────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### 第一層：核心層（Dinkoko ERP - 營運與單據中樞）
+### 第一層：核心層（Dura ERP - 營運與單據中樞）
 
 * 🟢 **【青春版 MVP】（當前落地目標）**：
   1. **訂單管理**：標準生命週期（草稿 DRAFT -> 已確認 CONFIRMED -> 出貨中 SHIPPED -> 已完成 COMPLETED）。支援通路來源標記（`channel_id`）。
@@ -189,7 +189,7 @@
 | 天數 | 衝刺主題 | 🟢 青春版 MVP 交付標準 (底線 - 垂直切片) | 🚀 樂觀解鎖項目 (時間充裕時) |
 | :---: | :--- | :--- | :--- |
 | **Day 1** | **核心架構與資料基底** | • Modular Monolith 四層骨架<br>• ANSI 關聯資料庫 Schema (18表)<br>• AST 架構邊界守護測試通過 (5/5 PASS) | • 多資料庫（PostgreSQL）連線配置<br>• 進階資料庫 Migration 腳本 |
-| **Day 2** | **Dinkoko ERP 核心流程** | • 雙倉庫存流水 (Stock Ledger) 與調撥<br>• 採購入庫 (GRN) 移動平均成本<br>• 訂單一鍵轉出貨單、PDF 標籤<br>• MIG 3.2.1 發票 Mock 與四單勾稽<br>• ERP 營運單據 View DTO 與管理後台切片 (HTMX) | • 多單位動態換算（箱/包/個）<br>• ZPL 實體標籤機指令<br>• 1:N 拆批出貨<br>• 條碼相機掃描出貨 |
+| **Day 2** | **Dura ERP 核心流程** | • 雙倉庫存流水 (Stock Ledger) 與調撥<br>• 採購入庫 (GRN) 移動平均成本<br>• 訂單一鍵轉出貨單、PDF 標籤<br>• MIG 3.2.1 發票 Mock 與四單勾稽<br>• ERP 營運單據 View DTO 與管理後台切片 (HTMX) | • 多單位動態換算（箱/包/個）<br>• ZPL 實體標籤機指令<br>• 1:N 拆批出貨<br>• 條碼相機掃描出貨 |
 | **Day 3** | **探吉 (TanGii) 會計與記帳系統** | • ERP 事件自動拋轉借貸傳票 ($Dr=Cr$)<br>• 應收/應付帳齡分析與逾期清單<br>• 損益表與試算表產出 (xlsxwriter)<br>• 會計試算表與帳齡可視化 Web 切片 (HTMX) | • 現金流量表產出<br>• 多幣別與匯兌損益換算<br>• 多專案/部門維度分攤 |
 | **Day 4** | **哩來 (LiLai) CRM 前段商機** | • 客戶主檔與四段商機管線<br>• 贏單 (WON) 一鍵穿透轉 ERP 訂單<br>• 報價單 DOCX 範本套印與 PDF 轉檔<br>• CRM 商機看板 (Kanban) Web 切片 (HTMX) | • AI 名片辨識建立潛客<br>• Lead Scoring 算分引擎<br>• Day 0/3/7 跟進郵件提醒 |
 | **Day 5** | **LINE Bot 智能通路入口** | • LINE Webhook 簽名驗證<br>• Flex Message 型錄與一鍵下單寫入 ERP<br>• 訂單出貨進度即時文字查詢<br>• 客戶端與管理端全鏈路聯調 | • 完整購物車暫存狀態機<br>• LIFF GPS 考勤打卡與審批<br>• 分眾動態 Rich Menu |

@@ -20,7 +20,7 @@ from src.shared.database import Database
 
 
 class LineBotService:
-    """Core domain service for handling LINE Bot webhook interactions with Dinkoko ERP."""
+    """Core domain service for handling LINE Bot webhook interactions with Dura ERP."""
 
     def __init__(
         self,

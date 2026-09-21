@@ -37,12 +37,12 @@ Layer 3: Channel & UI (Admin Web Dashboard & LINE Bot Customer Channel)
    |
 Layer 2: Extended Core (LiLai CRM & TanGii Accounting)
    |
-Layer 1: Core Engine (Dinkoko ERP - Inventory, Orders, Invoicing)
+Layer 1: Core Engine (Dura ERP - Inventory, Orders, Invoicing)
 ```
 
 ### Invariants:
 * **Unidirectional Dependency Flow**: Lower layers must NEVER import or depend upon higher layers.
-  - Layer 1 (Dinkoko ERP) has zero outgoing dependencies on CRM, Accounting, LINE Bots, or UI.
+  - Layer 1 (Dura ERP) has zero outgoing dependencies on CRM, Accounting, LINE Bots, or UI.
   - Layer 2 (CRM / Accounting) depends on Layer 1 via domain events or explicit service boundaries.
   - Layer 3 (Admin Web GUI & LINE Bots) interacts with ERP/CRM strictly through public service APIs / View DTOs.
   - Layer 4 (AI Wrappers) acts as non-blocking sidecars or data transformation pipelines.
@@ -69,10 +69,10 @@ Follow the file access matrix specified in [`ROADMAP.md`](file:///d:/3dollar_erp
 
 ## 5. UI & View Contract Guardrails (Zero-Build SSR & Vertical Slices)
 
-* **Web GUI Is Mandatory**: Dinkoko ERP is an operational ERP requiring visual administration (Web Dashboard, table views, order status progression, mobile RWD). LINE Bot is strictly an external customer touchpoint / value-added channel, NOT a substitute for the internal administrative Web GUI.
+* **Web GUI Is Mandatory**: Dura ERP is an operational ERP requiring visual administration (Web Dashboard, table views, order status progression, mobile RWD). LINE Bot is strictly an external customer touchpoint / value-added channel, NOT a substitute for the internal administrative Web GUI.
 * **Contract-First via View DTOs**: Presentation queries and APIs must expose tailored View DTOs (carrying pre-aggregated KPIs, formatted currencies/dates, and visual badge states). Never expose raw database entities directly to views.
 * **Zero-Build SSR Architecture**: All Web UI must use Python server-driven rendering (`FastAPI` + `Jinja2` + `HTMX` + `Tailwind CSS` via CDN). Strictly prohibit heavy JavaScript frameworks and build pipelines (`npm`, `webpack`, `vite`, React, Vue) to eliminate environment rot and preserve sprint velocity.
-* **Mandatory Vertical Slice per Batch (UI & Backend Synchronous Delivery)**: Dinkoko ERP is a user-facing UI application. Every implementation batch or feature increment MUST deliver its corresponding front-end UI components (HTML templates, modals, buttons, forms, input fields, and routes) in lockstep with the backend services and APIs. Strictly prohibit shipping backend APIs in isolation without the human-operable UI slice.
+* **Mandatory Vertical Slice per Batch (UI & Backend Synchronous Delivery)**: Dura ERP is a user-facing UI application. Every implementation batch or feature increment MUST deliver its corresponding front-end UI components (HTML templates, modals, buttons, forms, input fields, and routes) in lockstep with the backend services and APIs. Strictly prohibit shipping backend APIs in isolation without the human-operable UI slice.
 * **User-Facing Error Messages & I18n Protocol (Strict Traditional Chinese for UI/Toasts)**:
   - Every error message presented to human operators via HTMX (`#toast-container`, OOB swap banners, form feedback, and `HTTPException.detail` passed to the view) MUST be authored in professional Traditional Chinese (繁體中文).
   - Strictly prohibit raw internal English exception traces and uncaught English domain errors from leaking directly to the UI.
