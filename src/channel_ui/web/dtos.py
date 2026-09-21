@@ -31,6 +31,8 @@ class OrderRowDTO:
     can_invoice: bool = False
     has_shipping_label: bool = False
     has_invoice_pdf: bool = False
+    delivery_orders_count: int = 0
+    delivery_order_ids: List[str] = field(default_factory=list)
 
 
 @dataclass

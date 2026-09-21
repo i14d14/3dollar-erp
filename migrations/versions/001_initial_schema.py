@@ -142,7 +142,7 @@ def upgrade() -> None:
     op.create_table(
         "invoices",
         sa.Column("invoice_id", sa.String(), primary_key=True),
-        sa.Column("order_id", sa.String(), sa.ForeignKey("sales_orders.order_id"), unique=True, nullable=False),
+        sa.Column("order_id", sa.String(), sa.ForeignKey("sales_orders.order_id"), nullable=False),
         sa.Column("invoice_number", sa.String(), unique=True, nullable=False),
         sa.Column("random_code", sa.String(), nullable=False),
         sa.Column("tax_type", sa.String(), server_default="1", nullable=False),
@@ -155,11 +155,12 @@ def upgrade() -> None:
         sa.Column("status", sa.String(), server_default="ISSUED", nullable=False),
         sa.Column("issued_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP")),
     )
+    op.create_index("idx_invoices_order_id", "invoices", ["order_id"])
 
     op.create_table(
         "accounts_receivable",
         sa.Column("ar_id", sa.String(), primary_key=True),
-        sa.Column("order_id", sa.String(), sa.ForeignKey("sales_orders.order_id"), unique=True, nullable=False),
+        sa.Column("order_id", sa.String(), sa.ForeignKey("sales_orders.order_id"), nullable=False),
         sa.Column("invoice_id", sa.String(), sa.ForeignKey("invoices.invoice_id"), nullable=False),
         sa.Column("customer_id", sa.String(), nullable=False),
         sa.Column("due_date", sa.Date(), nullable=False),
@@ -168,6 +169,7 @@ def upgrade() -> None:
         sa.Column("status", sa.String(), server_default="UNPAID", nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP")),
     )
+    op.create_index("idx_ar_order_id", "accounts_receivable", ["order_id"])
 
     op.create_table(
         "accounts_payable",

@@ -132,18 +132,31 @@ class WebViewService:
                 (limit,),
             ).fetchall()
 
+            order_ids = [r["order_id"] for r in rows]
+            dos_by_order: Dict[str, List[str]] = {}
+            if order_ids:
+                placeholders = ",".join(["?"] * len(order_ids))
+                all_dos = conn.execute(
+                    f"SELECT do_id, order_id FROM delivery_orders WHERE order_id IN ({placeholders}) ORDER BY rowid ASC",
+                    order_ids,
+                ).fetchall()
+                for d in all_dos:
+                    dos_by_order.setdefault(d["order_id"], []).append(d["do_id"])
+
         orders: List[OrderRowDTO] = []
         for r in rows:
             status = r["status"]
             do_id = r["do_id"]
             inv_num = r["invoice_number"]
             ar_id = r["ar_id"]
+            oid = r["order_id"]
+            do_list = dos_by_order.get(oid, [do_id] if do_id else [])
 
             is_reconciled = bool(do_id and inv_num and ar_id)
 
             orders.append(
                 OrderRowDTO(
-                    order_id=r["order_id"],
+                    order_id=oid,
                     customer_id=r["customer_id"],
                     channel=r["channel"],
                     status=status,
@@ -159,6 +172,8 @@ class WebViewService:
                     can_invoice=(status in ("CONFIRMED", "PARTIALLY_SHIPPED", "SHIPPED") and inv_num is None),
                     has_shipping_label=bool(do_id),
                     has_invoice_pdf=bool(inv_num),
+                    delivery_orders_count=len(do_list),
+                    delivery_order_ids=do_list,
                 )
             )
         return orders
@@ -182,8 +197,14 @@ class WebViewService:
                 (order_id,),
             ).fetchone()
 
-        if not r:
-            return None
+            if not r:
+                return None
+
+            do_rows = conn.execute(
+                "SELECT do_id FROM delivery_orders WHERE order_id = ? ORDER BY rowid ASC",
+                (order_id,),
+            ).fetchall()
+            delivery_order_ids = [d["do_id"] for d in do_rows]
 
         status = r["status"]
         do_id = r["do_id"]
@@ -209,6 +230,8 @@ class WebViewService:
             can_invoice=(status in ("CONFIRMED", "PARTIALLY_SHIPPED", "SHIPPED") and inv_num is None),
             has_shipping_label=bool(do_id),
             has_invoice_pdf=bool(inv_num),
+            delivery_orders_count=len(delivery_order_ids),
+            delivery_order_ids=delivery_order_ids,
         )
 
     def list_inventory_stocks(self) -> List[InventoryStockDTO]:

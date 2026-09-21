@@ -31,7 +31,27 @@
       <div class="flex items-center gap-1.5">
         <span class="w-2 h-2 rounded-full {% if order.do_id %}bg-emerald-500{% else %}bg-slate-300{% endif %}"></span>
         <span class="text-slate-600">出貨單 (DO):</span>
-        <span class="font-mono text-slate-800">{% if order.do_id %}{{ order.do_id }}{% else %}<span class="text-slate-400">未出貨</span>{% endif %}</span>
+        {% if order.delivery_orders_count > 1 %}
+        <button 
+          type="button"
+          hx-get="/orders/{{ order.order_id }}/deliveries-modal"
+          hx-target="#order-modal-container"
+          hx-swap="innerHTML"
+          class="font-mono text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">
+          {{ order.delivery_orders_count }} 批出貨歷程
+        </button>
+        {% elif order.do_id %}
+        <button 
+          type="button"
+          hx-get="/orders/{{ order.order_id }}/deliveries-modal"
+          hx-target="#order-modal-container"
+          hx-swap="innerHTML"
+          class="font-mono text-slate-800 hover:text-indigo-600 hover:underline cursor-pointer">
+          {{ order.do_id }}
+        </button>
+        {% else %}
+        <span class="font-mono text-slate-400">未出貨</span>
+        {% endif %}
       </div>
       <div class="flex items-center gap-1.5">
         <span class="w-2 h-2 rounded-full {% if order.invoice_number %}bg-emerald-500{% else %}bg-slate-300{% endif %}"></span>
@@ -55,8 +75,15 @@
       </button>
       {% endif %}
 
-      <!-- One-click Ship Button -->
+      <!-- Ship Buttons -->
       {% if order.can_ship %}
+      <button 
+        hx-get="/orders/{{ order.order_id }}/partial-ship-modal"
+        hx-target="#order-modal-container"
+        hx-swap="innerHTML"
+        class="px-2.5 py-1.5 text-xs font-medium rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 shadow-sm transition">
+        拆批出貨
+      </button>
       <button 
         hx-post="/orders/{{ order.order_id }}/ship"
         hx-target="#order-row-{{ order.order_id }}"
@@ -86,13 +113,15 @@
         title="列印物流標籤 PDF (100x150mm)">
         🏷️ 標籤
       </a>
-      <a 
-        href="/orders/{{ order.order_id }}/label_a4.pdf" 
-        target="_blank"
-        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition shadow-sm"
-        title="列印多格 A4 標籤貼紙 (2x2)">
+      <button 
+        type="button"
+        hx-get="/orders/{{ order.order_id }}/a4-label-modal" 
+        hx-target="#order-modal-container"
+        hx-swap="innerHTML"
+        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition shadow-sm cursor-pointer"
+        title="列印多格 A4 標籤貼紙 (2x2，支援起印格位選取)">
         📄 A4 貼紙
-      </a>
+      </button>
       {% endif %}
 
       {% if order.has_invoice_pdf %}

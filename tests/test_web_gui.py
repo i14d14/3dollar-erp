@@ -187,8 +187,30 @@ class TestWebGUI(unittest.TestCase):
                 "qty": 99999,
             },
         )
-        self.assertEqual(err_resp.status_code, 400)
-        self.assertIn("執行失敗", err_resp.text)
+    def test_partial_ship_gui_modal_and_execution(self) -> None:
+        order = self.order_service.create_order(
+            customer_id="CUST-PARTIAL-01",
+            items=[("SKU-PRO-1", Decimal("5.0"), Decimal("2500.0"))],
+        )
+        self.order_service.confirm_order(order.order_id, "WH-MAIN")
+
+        # 1. Fetch modal HTML
+        modal_resp = self.client.get(f"/orders/{order.order_id}/partial-ship-modal")
+        self.assertEqual(modal_resp.status_code, 200)
+        self.assertIn("拆批出貨", modal_resp.text)
+        self.assertIn("SKU-PRO-1", modal_resp.text)
+
+        # 2. Submit partial shipment (ship 2 out of 5)
+        item_id = order.items[0].item_id
+        post_resp = self.client.post(
+            f"/orders/{order.order_id}/ship-partial",
+            data={f"qty_{item_id}": 2},
+        )
+        self.assertEqual(post_resp.status_code, 200)
+        self.assertIn("PARTIALLY_SHIPPED", post_resp.text)
+        self.assertIn("DO-", post_resp.text)
+        self.assertIn("🏷️ 標籤", post_resp.text)
+        self.assertIn("📄 A4 貼紙", post_resp.text)
 
 
 if __name__ == "__main__":

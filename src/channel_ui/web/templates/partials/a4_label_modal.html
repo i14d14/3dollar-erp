@@ -1,0 +1,105 @@
+<div id="a4-label-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+    <!-- Header -->
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div>
+        <h3 class="font-bold text-slate-800 text-base">A4 標籤紙起印設定 (2x2 多格貼紙)</h3>
+        <p class="text-xs text-slate-500 font-mono mt-0.5">銷售訂單：{{ order.order_id }}</p>
+      </div>
+      <button type="button" onclick="document.getElementById('a4-label-modal').remove()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+    </div>
+
+    <!-- Form -->
+    <form action="/orders/{{ order.order_id }}/label_a4.pdf" 
+          method="GET" 
+          target="_blank" 
+          onsubmit="setTimeout(() => { const el = document.getElementById('a4-label-modal'); if (el) el.remove(); }, 400);"
+          class="p-5 space-y-5 text-xs">
+
+      <!-- DO Selection (if applicable) -->
+      {% if selected_do_id %}
+      <input type="hidden" name="do_id" value="{{ selected_do_id }}" />
+      <div class="bg-indigo-50/70 border border-indigo-100 rounded-lg p-3 flex items-center justify-between">
+        <span class="text-slate-600 font-medium">指定出貨單據：</span>
+        <span class="font-mono font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">{{ selected_do_id }}</span>
+      </div>
+      {% elif deliveries and deliveries|length > 1 %}
+      <div class="space-y-1.5">
+        <label class="block font-medium text-slate-700">選擇欲列印之出貨單：</label>
+        <select name="do_id" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white font-mono text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+          <option value="">全部出貨單一次合併列印 (共 {{ deliveries|length }} 批)</option>
+          {% for d in deliveries %}
+          <option value="{{ d.do_id }}">{{ d.do_id }} (託運單: {{ d.tracking_number }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <!-- 2x2 Visual Slot Selector -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="font-semibold text-slate-800">選擇起印格位 (Starting Slot)：</label>
+          <span class="text-[11px] text-slate-400">標準 A4 4格貼紙</span>
+        </div>
+        <p class="text-[11px] text-slate-500 leading-relaxed">
+          若您的貼紙紙張上半部已撕取使用，請點選第一個可印之「空白格位」，系統將自動避開已使用區域並接續列印：
+        </p>
+
+        <!-- Visual A4 Sheet Container -->
+        <div class="p-3 bg-slate-100 border border-slate-200 rounded-xl flex justify-center">
+          <div class="w-60 bg-white border-2 border-slate-300 shadow-md rounded-lg p-3 flex flex-col justify-between" style="aspect-ratio: 210 / 297; min-height: 320px;">
+            <div class="text-[10px] text-center text-slate-400 font-mono tracking-wider border-b border-dashed border-slate-200 pb-1.5 shrink-0">
+              --- A4 紙張頂端 (直式進紙方向) ---
+            </div>
+            <div class="grid grid-cols-2 gap-2.5 my-2 flex-1">
+              <!-- Slot 1 -->
+              <label class="relative flex flex-col items-center justify-center p-2.5 border-2 border-slate-200 rounded-lg hover:border-indigo-400 cursor-pointer transition has-checked:border-indigo-600 has-checked:bg-indigo-50/60 group h-full">
+                <input type="radio" name="start_pos" value="1" checked class="peer sr-only" />
+                <span class="font-bold text-slate-700 group-hover:text-indigo-600 peer-checked:text-indigo-700 text-xs">第 1 格</span>
+                <span class="text-[10px] text-slate-400 peer-checked:text-indigo-600 font-mono">左上</span>
+                <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border border-slate-300 peer-checked:bg-indigo-600 peer-checked:border-indigo-600"></span>
+              </label>
+
+              <!-- Slot 2 -->
+              <label class="relative flex flex-col items-center justify-center p-2.5 border-2 border-slate-200 rounded-lg hover:border-indigo-400 cursor-pointer transition has-checked:border-indigo-600 has-checked:bg-indigo-50/60 group h-full">
+                <input type="radio" name="start_pos" value="2" class="peer sr-only" />
+                <span class="font-bold text-slate-700 group-hover:text-indigo-600 peer-checked:text-indigo-700 text-xs">第 2 格</span>
+                <span class="text-[10px] text-slate-400 peer-checked:text-indigo-600 font-mono">右上</span>
+                <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border border-slate-300 peer-checked:bg-indigo-600 peer-checked:border-indigo-600"></span>
+              </label>
+
+              <!-- Slot 3 -->
+              <label class="relative flex flex-col items-center justify-center p-2.5 border-2 border-slate-200 rounded-lg hover:border-indigo-400 cursor-pointer transition has-checked:border-indigo-600 has-checked:bg-indigo-50/60 group h-full">
+                <input type="radio" name="start_pos" value="3" class="peer sr-only" />
+                <span class="font-bold text-slate-700 group-hover:text-indigo-600 peer-checked:text-indigo-700 text-xs">第 3 格</span>
+                <span class="text-[10px] text-slate-400 peer-checked:text-indigo-600 font-mono">左下</span>
+                <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border border-slate-300 peer-checked:bg-indigo-600 peer-checked:border-indigo-600"></span>
+              </label>
+
+              <!-- Slot 4 -->
+              <label class="relative flex flex-col items-center justify-center p-2.5 border-2 border-slate-200 rounded-lg hover:border-indigo-400 cursor-pointer transition has-checked:border-indigo-600 has-checked:bg-indigo-50/60 group h-full">
+                <input type="radio" name="start_pos" value="4" class="peer sr-only" />
+                <span class="font-bold text-slate-700 group-hover:text-indigo-600 peer-checked:text-indigo-700 text-xs">第 4 格</span>
+                <span class="text-[10px] text-slate-400 peer-checked:text-indigo-600 font-mono">右下</span>
+                <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border border-slate-300 peer-checked:bg-indigo-600 peer-checked:border-indigo-600"></span>
+              </label>
+            </div>
+            <div class="text-[10px] text-center text-slate-300 font-mono tracking-wider border-t border-dashed border-slate-200 pt-1 shrink-0">
+              --- A4 紙張底端 ---
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('a4-label-modal').remove()" class="px-3.5 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 transition">
+          取消
+        </button>
+        <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+          <span>📄 產生並開啟 A4 貼紙 PDF</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -99,6 +99,25 @@ async def ship_order_endpoint(
     )
 
 
+@router.get("/{order_id}/partial-ship-modal", response_class=HTMLResponse)
+async def get_partial_ship_modal_endpoint(
+    order_id: str,
+    request: Request,
+    templates: Jinja2Templates = Depends(get_templates),
+    order_service: OrderService = Depends(get_order_service),
+):
+    try:
+        order = order_service.get_order(order_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"找不到訂單: {e}")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/partial_ship_modal.html",
+        context={"order": order},
+    )
+
+
 @router.post("/{order_id}/ship-partial", response_class=HTMLResponse)
 async def ship_partial_order_endpoint(
     order_id: str,
@@ -164,6 +183,50 @@ async def get_order_deliveries_endpoint(
     ]
 
 
+@router.get("/{order_id}/deliveries-modal", response_class=HTMLResponse)
+async def get_deliveries_modal_endpoint(
+    order_id: str,
+    request: Request,
+    templates: Jinja2Templates = Depends(get_templates),
+    order_service: OrderService = Depends(get_order_service),
+):
+    try:
+        order = order_service.get_order(order_id)
+        deliveries = order_service.get_order_deliveries(order_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"找不到訂單出貨紀錄: {e}")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/deliveries_modal.html",
+        context={"order": order, "deliveries": deliveries},
+    )
+
+
+@router.get("/{order_id}/a4-label-modal", response_class=HTMLResponse)
+async def get_a4_label_modal_endpoint(
+    order_id: str,
+    request: Request,
+    do_id: Optional[str] = None,
+    templates: Jinja2Templates = Depends(get_templates),
+    order_service: OrderService = Depends(get_order_service),
+):
+    try:
+        order = order_service.get_order(order_id)
+        deliveries = order_service.get_order_deliveries(order_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"找不到訂單資料: {e}")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/a4_label_modal.html",
+        context={
+            "order": order,
+            "deliveries": deliveries,
+            "selected_do_id": do_id,
+        },
+    )
+
 
 @router.post("/{order_id}/invoice", response_class=HTMLResponse)
 async def issue_invoice_endpoint(
@@ -198,16 +261,23 @@ async def issue_invoice_endpoint(
 @router.get("/{order_id}/label.pdf")
 async def download_shipping_label(
     order_id: str,
+    do_id: Optional[str] = None,
     db: Database = Depends(get_db),
 ):
     with db.transaction() as conn:
-        row = conn.execute(
-            "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ?",
-            (order_id,),
-        ).fetchone()
+        if do_id and do_id.strip():
+            row = conn.execute(
+                "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ? AND do_id = ?",
+                (order_id, do_id.strip()),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ? ORDER BY rowid DESC LIMIT 1",
+                (order_id,),
+            ).fetchone()
 
     if not row:
-        raise HTTPException(status_code=404, detail="Shipping delivery order not found for this order")
+        raise HTTPException(status_code=404, detail="找不到該出貨單 (Shipping delivery order not found)")
 
     printer = PdfPrinterAdapter()
     label_data = ShippingLabelData(
@@ -222,34 +292,49 @@ async def download_shipping_label(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename=shipping_label_{order_id}.pdf"},
+        headers={"Content-Disposition": f"inline; filename=shipping_label_{row['do_id']}.pdf"},
     )
 
 
 @router.get("/{order_id}/label_a4.pdf")
 async def download_shipping_label_a4(
     order_id: str,
+    start_pos: int = 1,
+    do_id: Optional[str] = None,
     db: Database = Depends(get_db),
 ):
-    with db.transaction() as conn:
-        row = conn.execute(
-            "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ? ORDER BY rowid DESC LIMIT 1",
-            (order_id,),
-        ).fetchone()
+    if not (1 <= start_pos <= 4):
+        raise HTTPException(status_code=400, detail="起印格位 (start_pos) 必須在 1 到 4 之間")
 
-    if not row:
+    with db.transaction() as conn:
+        if do_id and do_id.strip():
+            rows = conn.execute(
+                "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ? AND do_id = ?",
+                (order_id, do_id.strip()),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ? ORDER BY rowid ASC",
+                (order_id,),
+            ).fetchall()
+
+    if not rows:
         raise HTTPException(status_code=404, detail="找不到該訂單之出貨單據 (Delivery order not found)")
 
     printer = PdfPrinterAdapter()
-    label_data = ShippingLabelData(
-        do_id=row["do_id"],
-        order_id=row["order_id"],
-        recipient_name="收件客戶",
-        recipient_phone="0912-345-678",
-        shipping_address="台北市信義區信義路五段7號",
-        tracking_number=row["tracking_number"] or "TRK-UNKNOWN",
-    )
-    pdf_bytes = printer.generate_shipping_label_pdf(label_data, page_format="A4")
+    labels = [
+        ShippingLabelData(
+            do_id=r["do_id"],
+            order_id=r["order_id"],
+            recipient_name="收件客戶",
+            recipient_phone="0912-345-678",
+            shipping_address="台北市信義區信義路五段7號",
+            tracking_number=r["tracking_number"] or "TRK-UNKNOWN",
+        )
+        for r in rows
+    ]
+
+    pdf_bytes = printer.generate_a4_shipping_labels_pdf(labels, layout="2x2", start_position=start_pos)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

@@ -72,7 +72,7 @@ Follow the file access matrix specified in [`ROADMAP.md`](file:///d:/3dollar_erp
 * **Web GUI Is Mandatory**: Dinkoko ERP is an operational ERP requiring visual administration (Web Dashboard, table views, order status progression, mobile RWD). LINE Bot is strictly an external customer touchpoint / value-added channel, NOT a substitute for the internal administrative Web GUI.
 * **Contract-First via View DTOs**: Presentation queries and APIs must expose tailored View DTOs (carrying pre-aggregated KPIs, formatted currencies/dates, and visual badge states). Never expose raw database entities directly to views.
 * **Zero-Build SSR Architecture**: All Web UI must use Python server-driven rendering (`FastAPI` + `Jinja2` + `HTMX` + `Tailwind CSS` via CDN). Strictly prohibit heavy JavaScript frameworks and build pipelines (`npm`, `webpack`, `vite`, React, Vue) to eliminate environment rot and preserve sprint velocity.
-* **Vertical Slice Delivery**: Each domain sprint delivers its business logic and corresponding UI slice in tandem. Strictly prohibit deferring all GUI development to the final sprint.
+* **Mandatory Vertical Slice per Batch (UI & Backend Synchronous Delivery)**: Dinkoko ERP is a user-facing UI application. Every implementation batch or feature increment MUST deliver its corresponding front-end UI components (HTML templates, modals, buttons, forms, input fields, and routes) in lockstep with the backend services and APIs. Strictly prohibit shipping backend APIs in isolation without the human-operable UI slice.
 * **User-Facing Error Messages & I18n Protocol (Strict Traditional Chinese for UI/Toasts)**:
   - Every error message presented to human operators via HTMX (`#toast-container`, OOB swap banners, form feedback, and `HTTPException.detail` passed to the view) MUST be authored in professional Traditional Chinese (繁體中文).
   - Strictly prohibit raw internal English exception traces and uncaught English domain errors from leaking directly to the UI.
@@ -90,3 +90,8 @@ Whenever reporting newly added features for manual verification or guiding the u
   - **Action (動作)**: Concrete operational step to perform (target page/tab, button clicked, form inputs, sample payload).
   - **Expected Outcome (預期)**: Concrete visual, data, or system reaction (UI badge update, toast/banner, PDF/Excel stream download, database reflection).
 * Strictly prohibit listing feature names or summaries without the explicit paired Action $\rightarrow$ Expected Outcome breakdown.
+* **On-Demand Autonomous Playwright Testing Policy**:
+  - Running end-to-end headless browser testing via Playwright is resource-intensive and incurs high overhead.
+  - Agents MUST NOT automatically execute autonomous Playwright test suites (e.g., `test_playwright_*.py`) after every batch or routine task.
+  - Standard fast unit tests, API integration tests, and architecture rule checks (`check_boundaries.py`) should be run autonomously as usual.
+  - Autonomous Playwright browser E2E test suites must ONLY be executed when the user explicitly instructs to run them.

@@ -61,4 +61,6 @@ class DeliveryOrder(DomainModel):
     warehouse_id: str
     tracking_number: Optional[str] = None
     allocations: List[DeliveryAllocation] = []
+    shipped_at: Optional[str] = None
+
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import datetime
 import sqlite3
 import uuid
 from decimal import Decimal
@@ -336,12 +337,14 @@ class OrderService:
         )
         self.event_bus.publish(event)
 
+        now_iso = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         delivery_order = DeliveryOrder(
             do_id=do_id,
             order_id=order_id,
             warehouse_id=warehouse_id,
             tracking_number=tracking,
             allocations=created_allocations,
+            shipped_at=now_iso,
         )
         return delivery_order, label_pdf
 
@@ -378,6 +381,7 @@ class OrderService:
                         warehouse_id=r["warehouse_id"],
                         tracking_number=r["tracking_number"],
                         allocations=allocs,
+                        shipped_at=str(r["shipped_at"])[:19] if r["shipped_at"] else None,
                     )
                 )
             return deliveries

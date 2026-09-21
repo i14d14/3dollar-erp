@@ -116,7 +116,7 @@ CREATE INDEX IF NOT EXISTS idx_delivery_allocations_do ON delivery_allocations(d
 -- 7. Electronic Invoices (Taiwan MIG 3.2.1 Standardized Mock)
 CREATE TABLE IF NOT EXISTS invoices (
     invoice_id TEXT PRIMARY KEY,
-    order_id TEXT NOT NULL UNIQUE REFERENCES sales_orders(order_id),
+    order_id TEXT NOT NULL REFERENCES sales_orders(order_id),
     invoice_number TEXT NOT NULL UNIQUE, -- e.g., 'AB-12345678'
     random_code TEXT NOT NULL,           -- 4 digits
     tax_type TEXT NOT NULL DEFAULT '1',  -- '1': 應稅 5%, '2': 零稅率, '3': 免稅
@@ -130,10 +130,12 @@ CREATE TABLE IF NOT EXISTS invoices (
     issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_invoices_order_id ON invoices(order_id);
+
 -- 8. Accounts Receivable (AR) & Accounts Payable (AP) - Cash Flow Control
 CREATE TABLE IF NOT EXISTS accounts_receivable (
     ar_id TEXT PRIMARY KEY,
-    order_id TEXT NOT NULL UNIQUE REFERENCES sales_orders(order_id),
+    order_id TEXT NOT NULL REFERENCES sales_orders(order_id),
     invoice_id TEXT NOT NULL REFERENCES invoices(invoice_id),
     customer_id TEXT NOT NULL,
     due_date DATE NOT NULL,
@@ -142,6 +144,8 @@ CREATE TABLE IF NOT EXISTS accounts_receivable (
     status TEXT NOT NULL DEFAULT 'UNPAID', -- 'UNPAID', 'PARTIAL', 'PAID', 'OVERDUE'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_ar_order_id ON accounts_receivable(order_id);
 
 CREATE TABLE IF NOT EXISTS accounts_payable (
     ap_id TEXT PRIMARY KEY,

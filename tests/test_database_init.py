@@ -67,5 +67,45 @@ class TestDatabaseInitialization(unittest.TestCase):
             self.assertIsNotNone(row)
             self.assertEqual(row["name"], "Main Warehouse")
 
+    def test_invoices_and_ar_allow_multiple_per_order(self):
+        """Verify that invoices and accounts_receivable allow multiple records referencing the same order_id (1:N ready)."""
+        with self.db.transaction() as conn:
+            conn.execute("INSERT INTO sales_orders (order_id, customer_id, total_amount) VALUES ('SO-MULTI-1', 'CUST-1', 5000);")
+            
+            # Insert two invoices for the same order_id
+            conn.execute(
+                "INSERT INTO invoices (invoice_id, order_id, invoice_number, random_code, total_amount, tax_amount) "
+                "VALUES ('INV-1', 'SO-MULTI-1', 'AA-10000001', '1234', 2000, 100);"
+            )
+            conn.execute(
+                "INSERT INTO invoices (invoice_id, order_id, invoice_number, random_code, total_amount, tax_amount) "
+                "VALUES ('INV-2', 'SO-MULTI-1', 'AA-10000002', '5678', 3000, 150);"
+            )
+
+            # Insert two ARs for the same order_id
+            conn.execute(
+                "INSERT INTO accounts_receivable (ar_id, order_id, invoice_id, customer_id, due_date, amount) "
+                "VALUES ('AR-1', 'SO-MULTI-1', 'INV-1', 'CUST-1', '2026-10-01', 2000);"
+            )
+            conn.execute(
+                "INSERT INTO accounts_receivable (ar_id, order_id, invoice_id, customer_id, due_date, amount) "
+                "VALUES ('AR-2', 'SO-MULTI-1', 'INV-2', 'CUST-1', '2026-10-01', 3000);"
+            )
+
+        # Verify query
+        with self.db.transaction() as conn:
+            inv_count = conn.execute("SELECT COUNT(*) FROM invoices WHERE order_id = 'SO-MULTI-1';").fetchone()[0]
+            ar_count = conn.execute("SELECT COUNT(*) FROM accounts_receivable WHERE order_id = 'SO-MULTI-1';").fetchone()[0]
+            self.assertEqual(inv_count, 2)
+            self.assertEqual(ar_count, 2)
+
+            # Verify that invoice_number still enforces UNIQUE
+            with self.assertRaises(sqlite3.IntegrityError):
+                conn.execute(
+                    "INSERT INTO invoices (invoice_id, order_id, invoice_number, random_code, total_amount, tax_amount) "
+                    "VALUES ('INV-3', 'SO-MULTI-1', 'AA-10000001', '9999', 1000, 50);"
+                )
+
 if __name__ == "__main__":
     unittest.main()
+

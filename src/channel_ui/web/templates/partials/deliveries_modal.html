@@ -1,0 +1,84 @@
+<div id="deliveries-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+    <!-- Modal Header -->
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div>
+        <h3 class="font-bold text-slate-800 text-base">出貨單紀錄與歷程 (Delivery Fulfillment History)</h3>
+        <p class="text-xs text-slate-500 font-mono mt-0.5">
+          銷售訂單：{{ order.order_id }} ｜ 累計出貨批次：<span class="font-bold text-indigo-600">{{ deliveries|length }}</span> 批
+        </p>
+      </div>
+      <button type="button" onclick="document.getElementById('deliveries-modal').remove()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="p-5 overflow-y-auto space-y-4 text-xs">
+      {% if not deliveries %}
+      <div class="text-center py-8 text-slate-400">
+        此訂單尚未有任何出貨單據記錄
+      </div>
+      {% endif %}
+
+      {% for d in deliveries %}
+      <div class="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+        <!-- DO Card Header -->
+        <div class="bg-slate-50/80 p-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 font-bold font-mono rounded text-xs border border-indigo-200">
+              {{ d.do_id }}
+            </span>
+            <span class="text-slate-500">出貨時間：<span class="font-mono font-medium text-slate-700">{{ d.shipped_at or '即時' }}</span></span>
+            <span class="text-slate-300">|</span>
+            <span class="text-slate-500">出貨倉庫：<span class="font-mono font-medium text-slate-700">{{ d.warehouse_id }}</span></span>
+            <span class="text-slate-300">|</span>
+            <span class="text-slate-500">託運單號：<span class="font-mono font-medium text-slate-700">{{ d.tracking_number }}</span></span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <a href="/orders/{{ order.order_id }}/label.pdf?do_id={{ d.do_id }}"
+               target="_blank"
+               class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded border border-slate-300 shadow-2xs transition">
+              🏷️ 100x150 標籤
+            </a>
+            <button type="button"
+                    hx-get="/orders/{{ order.order_id }}/a4-label-modal?do_id={{ d.do_id }}"
+                    hx-target="#order-modal-container"
+                    hx-swap="innerHTML"
+                    class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded border border-indigo-200 shadow-2xs transition">
+              📄 A4 貼紙 (選格位)
+            </button>
+          </div>
+        </div>
+
+        <!-- Allocation Items Table -->
+        <div class="p-3 bg-white">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="text-[11px] text-slate-400 border-b border-slate-100 font-semibold">
+                <th class="pb-1">分配識別碼 (Allocation ID)</th>
+                <th class="pb-1">商品編號 (SKU)</th>
+                <th class="pb-1 text-right">此批出貨數量</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50 text-slate-700 font-mono">
+              {% for alloc in d.allocations %}
+              <tr>
+                <td class="py-1.5 text-slate-500">{{ alloc.allocation_id }}</td>
+                <td class="py-1.5 font-semibold text-slate-900">{{ alloc.sku }}</td>
+                <td class="py-1.5 text-right font-bold text-emerald-600">{{ alloc.allocated_qty|int }} 件</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+      <button type="button" onclick="document.getElementById('deliveries-modal').remove()" class="px-4 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium shadow-2xs transition">
+        關閉視窗
+      </button>
+    </div>
+  </div>
+</div>

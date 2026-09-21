@@ -7,12 +7,12 @@
 ### 專案進度儀表板 (Dashboard)
 
 * **專案名稱**：3Dollar ERP (三圓科技產品架構複製)
-* **當前衝刺階段**：滿血版第 1 批（底層基建與核心彈性）全數驗收通過，推進第 2 批（次核心業務深化）
+* **當前衝刺階段**：滿血版第 1 批（底層基建與核心彈性）真人真機手動驗收全數通過，推進第 2 批（次核心業務深化）
 * **研發策略模式**：雙軌制（青春版基準 MVP 交付完畢，滿血版四階段推進中）
-* **整體完成度**：100.0% [██████████]（青春版 100% + 滿血版第 1 批完工）
-* **當前焦點任務**：滿血版第 1 批交付歸檔、全系統 100/100 自動化測試全數通過、推進第 2 批次核心業務深化
+* **整體完成度**：100.0% [██████████]（青春版 100% + 滿血版第 1 批完工交付）
+* **當前焦點任務**：滿血版第 1 批完工交付歸檔、全系統 102/102 自動化測試通過、準備啟動第 2 批次核心業務深化
 * **當前阻礙 (Blockers)**：無阻礙 (None)
-* **最後更新時間**：2026-09-20
+* **最後更新時間**：2026-09-21
 
 ---
 
@@ -79,8 +79,16 @@
 ### [x] Full Expansion Batch 1: 底層基建與核心彈性 (Core Resilience & DB Migration) - 已驗收 (100% 完成)
 > 規格詳細定義：[`ROADMAP.md#第-1-批底層基建與核心彈性-core-resilience--db-migration`](file:///d:/3dollar_erp/ROADMAP.md#第-1-批底層基建與核心彈性-core-resilience--db-migration)
 - [x] **Task B1.1**: PostgreSQL 抽象與 Alembic 版本控制（雙引擎 `Database`、參數標記 `?` $\rightarrow$ `%s` 透明轉譯、`UnifiedRow` 索引/鍵名雙模式存取、Alembic 001 基準腳本）
-- [x] **Task B1.2**: 1:N 訂單拆批出貨與累計核銷（`delivery_allocations` 關聯表、`shipped_quantity` 累計、`PARTIALLY_SHIPPED` 狀態機、1:1 零破壞向下相容）
-- [x] **Task B1.3**: A4 多格標籤排版適配（`PdfPrinterAdapter` 實作 2x2 A4 標籤紙排版、支援起印位置選取與自動跨頁、`/orders/{id}/label_a4.pdf` 下載入口）
+- [x] **Task B1.2**: 1:N 訂單拆批出貨與前端對話框切片（`delivery_allocations` 關聯表、`shipped_quantity` 累計、`PARTIALLY_SHIPPED` 狀態機、`partial_ship_modal.html` 拆批彈窗、`deliveries_modal.html` 出貨歷程檢視、1:1 零破壞向下相容）
+- [x] **Task B1.3**: A4 多格標籤排版適配與起印選取切片（`PdfPrinterAdapter` 實作 2x2 A4 標籤紙排版、`a4_label_modal.html` 視覺化 1~4 格位選取、`/orders/{id}/label_a4.pdf` 支援 `start_pos`/`do_id` 路由串接）
+
+### [ ] Full Expansion Batch 2: 次核心業務深化 (Extended Core: Accounting, CRM & Lightweight HR)
+> 規格詳細定義：[`ROADMAP.md#第-2-批次核心業務深化-extended-core-accounting-crm--lightweight-hr`](file:///d:/3dollar_erp/ROADMAP.md#第-2-批次核心業務深化-extended-core-accounting-crm--lightweight-hr)
+- [ ] **Task B2.1**: 探吉 (TanGii) 完整財務報表垂直切片（資產負債表與現金流量表產出邏輯、`/accounting` 查詢頁籤、金額展示表格與 Excel 匯出）
+- [ ] **Task B2.2**: 台銀公開牌告匯率與匯兌損益垂直切片（公開免費牌告匯率排程更新、收付款沖銷自動拋轉兌換損益傳票、沖銷彈窗幣別與匯率欄位）
+- [ ] **Task B2.3**: 哩來 (LiLai) 規則式 Lead Scoring 垂直切片（0～100 分規則計分引擎、`/crm` 看板卡片與客戶清冊評分徽章渲染與排序篩選）
+- [ ] **Task B2.4**: 報價單/合約多版本審批垂直切片（草稿多版本 v1/v2 比對、簽核狀態機、CRM 詳情頁版本下拉切換與主管核准/駁回按鈕）
+- [ ] **Task B2.5**: 微型 HR 考勤打卡核心垂直切片（`attendance_records` 資料模型、打卡防呆規則、`/hr/attendance` 考勤管理日曆切片與出缺勤統計卡）
 
 ---
 
@@ -117,6 +125,12 @@
 | 2026-09-19 | Day 6 (使用者手動全功能真機驗收) | 使用者手動完成 5 大功能逐一驗證，修復示範發票 PDF 排版溢出、移除示範發票按鈕、更名為「下載 BOM 匯入範本」、買方未設置標準化、修正發票金額勾稽繁中公式與 PO 媒合重複防呆，全套測試 87/87 PASS，宣告 Day 6 驗收通過 | PASS |
 | 2026-09-19 | Day 7 (全鏈路端到端整合與驗收) | 完成訂單 COMPLETED 狀態機閉環、demo_seed 多通路 (DIRECT/CRM/LINE) 與多階段單據擴充、B2B/B2C/AI 三路全鏈路 E2E 測試 (test_full_lifecycle_e2e.py)、Playwright 瀏覽器端到端驗收 (test_playwright_day7_e2e.py)、架構邊界 0 違規，全專案 91/91 自動化測試 100% 通過，全案正式交付 | PASS |
 | 2026-09-20 | 滿血版第 1 批 (底層基建與核心彈性) | 完成 PostgreSQL 雙引擎轉接抽象、Alembic 001 遷移設定、1:N 訂單拆批出貨 (delivery_allocations / PARTIALLY_SHIPPED)、辦公室多格 A4 標籤貼紙 (2x2) 產生與下載，全套測試 100/100 PASS，架構邊界 0 違規 | PASS |
+| 2026-09-20 | 滿血版第 1 批 (Playwright 真人 UI 端到端驗收) | 完成拆批出貨 UI 對話框、A4 多格標籤下載與尺寸驗證、超額防呆紅底警示、全狀態機躍遷與全模組雙引擎導覽，新增 test_playwright_batch1.py，全套 102/102 測試全數通過 | PASS |
+| 2026-09-20 | 滿血版第 1 批 (UI 垂直切片補正與全流程貫通) | 補齊 1:N 出貨單歷程檢視彈窗 (deliveries_modal.html)、A4 標籤 2x2 視覺化起印選取彈窗 (a4_label_modal.html)、路由支援 start_pos/do_id 與 OrderRowDTO 欄位擴充，全系統 101/101 自動化測試全數通過，架構邊界 0 違規 | PASS |
+| 2026-09-20 | 滿血版第 1 批 (Headed Playwright 真人 UI 驗收) | 依據使用者明確指令啟動 Headed Playwright 真實瀏覽器，全流程驗收拆批超額防呆、1:N 出貨歷程彈窗、A4 視覺化起印選取 (start_pos=3)、狀態機完整閉環與 5 大模組導覽，test_playwright_batch1.py 1/1 PASS | PASS |
+| 2026-09-20 | 架構防禦 (發票與應收 1:1 約束解除) | 完成 schema.sql、migrations 001 及實體 erp.db 重建，解除 invoices.order_id 與 accounts_receivable.order_id 之 UNIQUE 約束並補齊索引，新增多單據資料庫測試 test_invoices_and_ar_allow_multiple_per_order，單元與架構邊界 0 違規全數 PASS | PASS |
+| 2026-09-21 | 滿血版第 1 批 (使用者全功能真機手動驗收) | 使用者手動完成 1:N 拆批出貨、超額防呆、A4 標籤直向預覽適配、出貨歷程時間戳記展示、全域彈窗容器跨頁強化全面驗收通過，全系統 102/102 測試通過，宣告滿血版第 1 批正式交付完工 | PASS |
+
 
 
 
