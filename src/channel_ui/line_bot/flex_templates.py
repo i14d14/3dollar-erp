@@ -130,8 +130,14 @@ def build_order_receipt_flex(
     item_rows = []
     for item in items:
         sku = item.get("sku", "")
+        pname = item.get("product_name") or item.get("name")
         qty = item.get("qty", 1)
         subtotal = item.get("subtotal", 0)
+        if pname and pname != sku and f"({sku})" not in pname:
+            item_display = f"{pname} ({sku}) x {qty}"
+        else:
+            item_display = f"{sku} x {qty}" if sku else f"{pname} x {qty}"
+
         item_rows.append(
             {
                 "type": "box",
@@ -139,7 +145,7 @@ def build_order_receipt_flex(
                 "contents": [
                     {
                         "type": "text",
-                        "text": f"{sku} x {qty}",
+                        "text": item_display,
                         "size": "sm",
                         "color": "#334155",
                         "flex": 6,
@@ -350,14 +356,20 @@ def build_order_status_flex(
     item_rows = []
     for item in items:
         sku = item.get("sku", "")
+        pname = item.get("product_name") or item.get("name")
         qty = item.get("qty", 1)
         subtotal = item.get("subtotal", 0)
+        if pname and pname != sku and f"({sku})" not in pname:
+            item_display = f"{pname} ({sku}) x {qty}"
+        else:
+            item_display = f"{sku} x {qty}" if sku else f"{pname} x {qty}"
+
         item_rows.append(
             {
                 "type": "box",
                 "layout": "horizontal",
                 "contents": [
-                    {"type": "text", "text": f"{sku} x {qty}", "size": "xs", "color": "#475569", "flex": 6},
+                    {"type": "text", "text": item_display, "size": "xs", "color": "#475569", "flex": 6},
                     {"type": "text", "text": f"NT$ {subtotal:,.0f}", "size": "xs", "color": "#0F172A", "align": "end", "flex": 4},
                 ],
             }

@@ -1,0 +1,132 @@
+<div id="settle-confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-fade-in">
+    <!-- Header -->
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div>
+        <h3 class="font-bold text-slate-800 text-base">
+          {% if settle_type == 'AR' %}
+          ⚡ 應收帳款沖銷收款確認 (AR Settlement)
+          {% else %}
+          ⚡ 應付帳款沖銷付款確認 (AP Settlement)
+          {% endif %}
+        </h3>
+        <p class="text-xs text-slate-500 font-mono mt-0.5">
+          單號：{{ item.item_id }} • 關聯單據：{{ item.reference_id }}
+        </p>
+      </div>
+      <button type="button" onclick="document.getElementById('settle-confirm-modal').remove()" class="text-slate-400 hover:text-slate-700 text-lg leading-none cursor-pointer">&times;</button>
+    </div>
+
+    <!-- Settlement Form -->
+    <form hx-post="/accounting/{{ 'ar' if settle_type == 'AR' else 'ap' }}/{{ item.item_id }}/settle"
+          hx-target="#accounting-container"
+          hx-select="#accounting-container"
+          hx-swap="outerHTML"
+          hx-on::after-request="if(event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { document.getElementById('settle-confirm-modal').remove(); }"
+          novalidate
+          class="p-5 space-y-4">
+
+      <!-- Details Summary Card -->
+      <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="text-slate-500">{% if settle_type == 'AR' %}付款客戶：{% else %}受款廠商：{% endif %}</span>
+          <span class="font-semibold text-slate-900">
+            {% if item.partner_id and item.partner_name != item.partner_id %}
+              {{ item.partner_name }} <span class="text-xs text-slate-400 font-normal font-mono">({{ item.partner_id }})</span>
+            {% else %}
+              {{ item.partner_name }}
+            {% endif %}
+          </span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-500">應結總額：</span>
+          <span class="font-mono text-slate-700">NT$ {{ "{:,.2f}".format(item.total_amount) }}</span>
+        </div>
+        <div class="flex justify-between items-center pt-1 border-t border-slate-200">
+          <span class="text-slate-700 font-medium">本次沖銷結清金額：</span>
+          <span class="font-mono font-bold text-sm {% if settle_type == 'AR' %}text-emerald-700{% else %}text-rose-700{% endif %}">
+            NT$ {{ "{:,.2f}".format(item.outstanding_amount) }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Payment Account Selection -->
+      <div class="space-y-1.5">
+        <label for="payment_account" class="block text-xs font-semibold text-slate-700">
+          沖銷資金帳戶 (收/付款途徑)：
+        </label>
+        <select name="payment_account" id="payment_account"
+                class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800">
+          <option value="1101" selected>1101 - 現金 (Cash on Hand)</option>
+          <option value="1102">1102 - 銀行存款 (Bank Deposits)</option>
+        </select>
+      </div>
+
+      <!-- Journal Entry Double-Entry Preview -->
+      <div class="p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-xl text-xs space-y-1.5">
+        <div class="font-semibold text-indigo-950 flex items-center gap-1.5">
+          <span>📑 會計分錄借貸預覽 (Double-Entry Preview)：</span>
+        </div>
+        <div class="font-mono text-[11px] space-y-1 text-slate-700 bg-white p-2.5 rounded-lg border border-indigo-100">
+          {% if settle_type == 'AR' %}
+          <div class="flex justify-between text-emerald-800">
+            <span>借 (Dr): <span id="preview-dr-account">1101 現金</span></span>
+            <span class="font-bold">NT$ {{ "{:,.2f}".format(item.outstanding_amount) }}</span>
+          </div>
+          <div class="flex justify-between text-slate-700">
+            <span>貸 (Cr): 1144 應收帳款</span>
+            <span class="font-bold">NT$ {{ "{:,.2f}".format(item.outstanding_amount) }}</span>
+          </div>
+          {% else %}
+          <div class="flex justify-between text-slate-700">
+            <span>借 (Dr): 2144 應付帳款</span>
+            <span class="font-bold">NT$ {{ "{:,.2f}".format(item.outstanding_amount) }}</span>
+          </div>
+          <div class="flex justify-between text-rose-800">
+            <span>貸 (Cr): <span id="preview-cr-account">1101 現金</span></span>
+            <span class="font-bold">NT$ {{ "{:,.2f}".format(item.outstanding_amount) }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Financial Warning & Impact Notice -->
+      <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs space-y-1 text-amber-900">
+        <div class="font-bold flex items-center gap-1.5 text-amber-800">
+          ⚠️ 財務作業提醒：
+        </div>
+        <ul class="list-disc list-inside space-y-0.5 text-[11px] text-amber-800">
+          <li>送出後將立即更新該筆帳款為已結清（PAID），並自動產出會計傳票。</li>
+          <li>傳票將自動檢驗並維持借貸恆等式平衡（&sum; Dr = &sum; Cr）。</li>
+        </ul>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('settle-confirm-modal').remove()"
+                class="px-3.5 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">
+          取消
+        </button>
+        <button type="submit"
+                class="px-4 py-1.5 {% if settle_type == 'AR' %}bg-emerald-600 hover:bg-emerald-700{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %} text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1 cursor-pointer">
+          <span>確認執行沖銷</span>
+          <span class="htmx-indicator animate-spin">⏳</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  // Simple JS to sync account selection with preview
+  (function() {
+    const sel = document.getElementById('payment_account');
+    if (!sel) return;
+    sel.addEventListener('change', function() {
+      const txt = sel.options[sel.selectedIndex].text;
+      const dr = document.getElementById('preview-dr-account');
+      if (dr) dr.textContent = txt;
+      const cr = document.getElementById('preview-cr-account');
+      if (cr) cr.textContent = txt;
+    });
+  })();
+</script>

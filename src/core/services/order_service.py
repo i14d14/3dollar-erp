@@ -5,6 +5,7 @@ import uuid
 from decimal import Decimal
 from typing import List, Optional, Tuple
 
+from src.core.adapters.internal_carrier_adapter import InternalShippingCarrierProvider
 from src.core.adapters.pdf_printer_adapter import PdfPrinterAdapter
 from src.core.domain.order import (
     DeliveryAllocation,
@@ -16,6 +17,7 @@ from src.core.domain.order import (
 )
 from src.core.ports.event_bus_port import EventBusPort
 from src.core.ports.printer_port import PrinterPort, ShippingLabelData
+from src.core.ports.shipping_carrier_port import ShippingCarrierPort, WaybillRequest
 from src.core.services.inventory_service import InventoryService
 from src.shared.base_models import DomainEvent
 from src.shared.database import Database, default_db
@@ -28,17 +30,20 @@ class OrderService:
         event_bus: EventBusPort,
         inventory_service: Optional[InventoryService] = None,
         printer: Optional[PrinterPort] = None,
+        carrier_port: Optional[ShippingCarrierPort] = None,
     ) -> None:
         self.db = db
         self.event_bus = event_bus
         self.inventory_service = inventory_service or InventoryService(db=db)
         self.printer = printer or PdfPrinterAdapter()
+        self.carrier_port = carrier_port or InternalShippingCarrierProvider()
 
     def create_order(
         self,
         customer_id: str,
         items: List[Tuple[str, Decimal, Decimal]],  # (sku, qty, unit_price)
         channel: OrderChannel = OrderChannel.DIRECT,
+        warehouse_id: str = "WH-MAIN",
     ) -> SalesOrder:
         """Create a sales order in DRAFT status."""
         if not items:
@@ -64,10 +69,10 @@ class OrderService:
             # 2. Insert parent sales_orders first
             conn.execute(
                 """
-                INSERT INTO sales_orders (order_id, customer_id, channel, status, total_amount)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO sales_orders (order_id, customer_id, warehouse_id, channel, status, total_amount)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (order_id, customer_id, channel.value, OrderStatus.DRAFT.value, float(total_amount)),
+                (order_id, customer_id, warehouse_id, channel.value, OrderStatus.DRAFT.value, float(total_amount)),
             )
 
             # 3. Insert child sales_order_items
@@ -94,6 +99,7 @@ class OrderService:
         return SalesOrder(
             order_id=order_id,
             customer_id=customer_id,
+            warehouse_id=warehouse_id,
             channel=channel,
             status=OrderStatus.DRAFT,
             total_amount=total_amount,
@@ -104,7 +110,7 @@ class OrderService:
         """Retrieve a sales order with its items."""
         with self.db.transaction() as conn:
             row = conn.execute(
-                "SELECT order_id, customer_id, channel, status, total_amount FROM sales_orders WHERE order_id = ?",
+                "SELECT order_id, customer_id, warehouse_id, channel, status, total_amount FROM sales_orders WHERE order_id = ?",
                 (order_id,),
             ).fetchone()
             if not row:
@@ -132,18 +138,22 @@ class OrderService:
                 for r in item_rows
             ]
 
+            wh = row["warehouse_id"] if ("warehouse_id" in row.keys() and row["warehouse_id"]) else "WH-MAIN"
+
             return SalesOrder(
                 order_id=row["order_id"],
                 customer_id=row["customer_id"],
+                warehouse_id=wh,
                 channel=OrderChannel(row["channel"]),
                 status=OrderStatus(row["status"]),
                 total_amount=Decimal(str(row["total_amount"])),
                 items=items,
             )
 
-    def confirm_order(self, order_id: str, warehouse_id: str) -> SalesOrder:
+    def confirm_order(self, order_id: str, warehouse_id: Optional[str] = None) -> SalesOrder:
         """Confirm order and acquire virtual stock locks for all items in the designated warehouse."""
         order = self.get_order(order_id)
+        target_wh = warehouse_id or order.warehouse_id or "WH-MAIN"
         if order.status != OrderStatus.DRAFT:
             raise ValueError(f"無法確認訂單 {order_id}：目前狀態為 '{order.status.value}'，僅草稿 (DRAFT) 狀態可執行鎖庫確認 (Cannot confirm order)")
 
@@ -151,7 +161,7 @@ class OrderService:
         for item in order.items:
             self.inventory_service.acquire_stock_lock(
                 order_id=order_id,
-                warehouse_id=warehouse_id,
+                warehouse_id=target_wh,
                 sku=item.sku,
                 qty=item.qty,
             )
@@ -163,6 +173,29 @@ class OrderService:
             )
 
         return self.get_order(order_id)
+
+    def revert_order_confirmation(self, order_id: str) -> SalesOrder:
+        """Revert a confirmed order back to DRAFT and release virtual stock locks."""
+        order = self.get_order(order_id)
+        if order.status != OrderStatus.CONFIRMED:
+            raise ValueError(
+                f"無法撤回訂單確認：單據 {order_id} 目前狀態為 '{order.status.value}'，僅已確認 (CONFIRMED) 狀態可撤回 (Cannot revert order confirmation)"
+            )
+
+        deliveries = self.get_order_deliveries(order_id)
+        if deliveries:
+            raise ValueError(f"無法撤回訂單確認：單據 {order_id} 已有出貨紀錄，不可直接撤回 (Order has deliveries)")
+
+        self.inventory_service.release_stock_lock(order_id)
+
+        with self.db.transaction() as conn:
+            conn.execute(
+                "UPDATE sales_orders SET status = ? WHERE order_id = ?",
+                (OrderStatus.DRAFT.value, order_id),
+            )
+
+        return self.get_order(order_id)
+
 
     def cancel_order(self, order_id: str) -> SalesOrder:
         """Cancel an order and release any reserved virtual stock locks."""
@@ -184,15 +217,16 @@ class OrderService:
     def ship_order(
         self,
         order_id: str,
-        warehouse_id: str,
-        recipient_name: str,
-        recipient_phone: str,
-        shipping_address: str,
+        warehouse_id: Optional[str] = None,
+        recipient_name: str = "收件客戶",
+        recipient_phone: str = "0912-345-678",
+        shipping_address: str = "台北市信義區信義路五段7號",
         tracking_number: Optional[str] = None,
         items_to_ship: Optional[List[Tuple[str, Decimal]]] = None,
     ) -> Tuple[DeliveryOrder, bytes]:
         """One-click fulfillment / Partial fulfillment: fulfill stock locks, deduct physical stock, record allocations, and create DO."""
         order = self.get_order(order_id)
+        target_wh = warehouse_id or order.warehouse_id or "WH-MAIN"
         if order.status not in (OrderStatus.CONFIRMED, OrderStatus.PARTIALLY_SHIPPED):
             raise ValueError(
                 f"無法出貨訂單 {order_id}：目前狀態為 '{order.status.value}'，僅已確認 (CONFIRMED) 或部分出貨 (PARTIALLY_SHIPPED) 狀態可執行出貨扣庫 (Cannot ship order)"
@@ -228,7 +262,19 @@ class OrderService:
             raise ValueError(f"訂單 {order_id} 查無可出貨品項或剩餘出貨數量為 0 (No remaining items to ship)")
 
         do_id = f"DO-{uuid.uuid4().hex[:10].upper()}"
-        tracking = tracking_number or f"TRK-{uuid.uuid4().hex[:10].upper()}"
+        if tracking_number:
+            tracking = tracking_number
+        else:
+            waybill = self.carrier_port.dispatch_waybill(
+                WaybillRequest(
+                    order_id=order_id,
+                    recipient_name=recipient_name,
+                    recipient_phone=recipient_phone,
+                    shipping_address=shipping_address,
+                    package_count=1,
+                )
+            )
+            tracking = waybill.tracking_number
 
         # 1. Fulfill stock locks and deduct stock ledger
         for item, alloc_qty in allocations_to_make:
@@ -236,7 +282,7 @@ class OrderService:
             unit_cost = prod.cost_price if prod else Decimal("0.0")
             self.inventory_service.fulfill_stock_lock(
                 order_id=order_id,
-                warehouse_id=warehouse_id,
+                warehouse_id=target_wh,
                 sku=item.sku,
                 qty=alloc_qty,
                 unit_cost=unit_cost,
@@ -251,7 +297,7 @@ class OrderService:
                 INSERT INTO delivery_orders (do_id, order_id, warehouse_id, tracking_number)
                 VALUES (?, ?, ?, ?)
                 """,
-                (do_id, order_id, warehouse_id, tracking),
+                (do_id, order_id, target_wh, tracking),
             )
 
             for item, alloc_qty in allocations_to_make:
@@ -325,7 +371,7 @@ class OrderService:
             payload={
                 "order_id": order_id,
                 "do_id": do_id,
-                "warehouse_id": warehouse_id,
+                "warehouse_id": target_wh,
                 "total_amount": float(order.total_amount),
                 "tracking_number": tracking,
                 "status": target_status,
@@ -341,7 +387,7 @@ class OrderService:
         delivery_order = DeliveryOrder(
             do_id=do_id,
             order_id=order_id,
-            warehouse_id=warehouse_id,
+            warehouse_id=target_wh,
             tracking_number=tracking,
             allocations=created_allocations,
             shipped_at=now_iso,

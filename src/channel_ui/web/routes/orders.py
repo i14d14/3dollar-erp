@@ -12,6 +12,7 @@ from src.channel_ui.web.dependencies import (
     get_templates,
     get_view_service,
 )
+from src.channel_ui.web.toast_helper import render_toast_oob
 from src.channel_ui.web.view_service import WebViewService
 from src.core.adapters.mock_invoice_adapter import MockInvoiceProvider
 from src.core.adapters.pdf_printer_adapter import PdfPrinterAdapter
@@ -50,7 +51,8 @@ async def confirm_order_endpoint(
     order_service: OrderService = Depends(get_order_service),
 ):
     try:
-        order_service.confirm_order(order_id=order_id, warehouse_id="WH-MAIN")
+        order = order_service.get_order(order_id)
+        order_service.confirm_order(order_id=order_id, warehouse_id=order.warehouse_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -58,12 +60,74 @@ async def confirm_order_endpoint(
     if not dto:
         raise HTTPException(status_code=404, detail="Order not found")
 
+    row_html = templates.get_template("partials/order_row.html").render({
+        "request": request,
+        "order": dto,
+    })
+    toast_html = render_toast_oob(
+        templates=templates,
+        request=request,
+        message=f"訂單 {order_id} 鎖庫確認成功！庫存已保留。",
+        type="success",
+        undo_url=f"/orders/{order_id}/confirm/undo",
+        undo_label="撤回鎖庫",
+        undo_target=f"#order-row-{order_id}",
+        undo_swap="outerHTML",
+        ttl_seconds=6,
+    )
+    return HTMLResponse(content=f"{row_html}\n{toast_html}")
+
+
+@router.post("/{order_id}/confirm/undo", response_class=HTMLResponse)
+async def undo_confirm_order_endpoint(
+    order_id: str,
+    request: Request,
+    templates: Jinja2Templates = Depends(get_templates),
+    view_service: WebViewService = Depends(get_view_service),
+    order_service: OrderService = Depends(get_order_service),
+):
+    """撤回訂單鎖庫確認，復原至 DRAFT 狀態並釋放庫存鎖定。"""
+    try:
+        order_service.revert_order_confirmation(order_id=order_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    dto = view_service.get_order_row(order_id)
+    if not dto:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    row_html = templates.get_template("partials/order_row.html").render({
+        "request": request,
+        "order": dto,
+    })
+    toast_html = render_toast_oob(
+        templates=templates,
+        request=request,
+        message=f"已成功撤回訂單 {order_id} 鎖庫確認，庫存已原路釋放。",
+        type="success",
+        undo_url=None,
+        ttl_seconds=6,
+    )
+    return HTMLResponse(content=f"{row_html}\n{toast_html}")
+
+
+@router.get("/{order_id}/ship-modal", response_class=HTMLResponse)
+async def get_ship_confirm_modal_endpoint(
+    order_id: str,
+    request: Request,
+    templates: Jinja2Templates = Depends(get_templates),
+    view_service: WebViewService = Depends(get_view_service),
+):
+    """渲染一鍵出貨前置確認對話框。"""
+    try:
+        modal_ctx = view_service.get_ship_modal_context(order_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"找不到訂單: {e}")
+
     return templates.TemplateResponse(
         request=request,
-        name="partials/order_row.html",
-        context={
-            "order": dto,
-        },
+        name="partials/ship_confirm_modal.html",
+        context=modal_ctx,
     )
 
 
@@ -76,9 +140,10 @@ async def ship_order_endpoint(
     order_service: OrderService = Depends(get_order_service),
 ):
     try:
-        order_service.ship_order(
+        order = order_service.get_order(order_id)
+        do, _ = order_service.ship_order(
             order_id=order_id,
-            warehouse_id="WH-MAIN",
+            warehouse_id=order.warehouse_id,
             recipient_name="收件客戶",
             recipient_phone="0912-345-678",
             shipping_address="台北市信義區信義路五段7號",
@@ -90,13 +155,20 @@ async def ship_order_endpoint(
     if not dto:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    return templates.TemplateResponse(
+    row_html = templates.get_template("partials/order_row.html").render({
+        "request": request,
+        "order": dto,
+    })
+    modal_close_html = '<div id="order-modal-container" hx-swap-oob="innerHTML:#order-modal-container"></div>'
+    toast_html = render_toast_oob(
+        templates=templates,
         request=request,
-        name="partials/order_row.html",
-        context={
-            "order": dto,
-        },
+        message=f"訂單 {order_id} 出貨成功！出貨單號：{do.do_id}，實體庫存已扣減並完成銷貨成本入帳。",
+        type="success",
+        undo_url=None,
+        ttl_seconds=6,
     )
+    return HTMLResponse(content=f"{row_html}\n{modal_close_html}\n{toast_html}")
 
 
 @router.get("/{order_id}/partial-ship-modal", response_class=HTMLResponse)
@@ -104,17 +176,20 @@ async def get_partial_ship_modal_endpoint(
     order_id: str,
     request: Request,
     templates: Jinja2Templates = Depends(get_templates),
-    order_service: OrderService = Depends(get_order_service),
+    view_service: WebViewService = Depends(get_view_service),
 ):
+    """渲染拆批出貨前置數量分配對話框。"""
     try:
-        order = order_service.get_order(order_id)
+        modal_ctx = view_service.get_ship_modal_context(order_id)
+        warehouses = view_service.list_warehouses_for_select()
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"找不到訂單: {e}")
 
+    modal_ctx["warehouses"] = warehouses
     return templates.TemplateResponse(
         request=request,
         name="partials/partial_ship_modal.html",
-        context={"order": order},
+        context=modal_ctx,
     )
 
 
@@ -129,6 +204,7 @@ async def ship_partial_order_endpoint(
     form = await request.form()
     items_to_ship = []
     order = order_service.get_order(order_id)
+    shipping_wh = str(form.get("warehouse_id") or order.warehouse_id or "WH-MAIN").strip()
     for item in order.items:
         key = f"qty_{item.item_id}"
         if key in form and form[key]:
@@ -137,9 +213,9 @@ async def ship_partial_order_endpoint(
                 items_to_ship.append((item.item_id, val))
 
     try:
-        order_service.ship_order(
+        do, _ = order_service.ship_order(
             order_id=order_id,
-            warehouse_id="WH-MAIN",
+            warehouse_id=shipping_wh,
             recipient_name="收件客戶",
             recipient_phone="0912-345-678",
             shipping_address="台北市信義區信義路五段7號",
@@ -152,11 +228,21 @@ async def ship_partial_order_endpoint(
     if not dto:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    return templates.TemplateResponse(
+    row_html = templates.get_template("partials/order_row.html").render({
+        "request": request,
+        "order": dto,
+    })
+    modal_close_html = '<div id="order-modal-container" hx-swap-oob="innerHTML:#order-modal-container"></div>'
+    toast_html = render_toast_oob(
+        templates=templates,
         request=request,
-        name="partials/order_row.html",
-        context={"order": dto},
+        message=f"訂單 {order_id} 拆批出貨成功！出貨單號：{do.do_id}（出貨倉：{shipping_wh}），實體庫存已扣減並完成銷貨成本入帳。",
+        type="success",
+        undo_url=None,
+        ttl_seconds=6,
     )
+    return HTMLResponse(content=f"{row_html}\n{modal_close_html}\n{toast_html}")
+
 
 
 @router.get("/{order_id}/deliveries")
@@ -189,17 +275,20 @@ async def get_deliveries_modal_endpoint(
     request: Request,
     templates: Jinja2Templates = Depends(get_templates),
     order_service: OrderService = Depends(get_order_service),
+    view_service: WebViewService = Depends(get_view_service),
 ):
     try:
         order = order_service.get_order(order_id)
-        deliveries = order_service.get_order_deliveries(order_id)
+        deliveries = view_service.get_order_deliveries_view(order_id)
+        cust_dto = view_service.get_order_row(order_id)
+        customer_name = cust_dto.customer_name if cust_dto else None
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"找不到訂單出貨紀錄: {e}")
 
     return templates.TemplateResponse(
         request=request,
         name="partials/deliveries_modal.html",
-        context={"order": order, "deliveries": deliveries},
+        context={"order": order, "deliveries": deliveries, "customer_name": customer_name},
     )
 
 
@@ -237,7 +326,7 @@ async def issue_invoice_endpoint(
     invoice_service: InvoiceService = Depends(get_invoice_service),
 ):
     try:
-        invoice_service.issue_invoice_for_order(
+        inv, _, _ = invoice_service.issue_invoice_for_order(
             order_id=order_id,
             tax_type=TaxType.TAXABLE,
             buyer_name="測試買受人",
@@ -249,13 +338,20 @@ async def issue_invoice_endpoint(
     if not dto:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    return templates.TemplateResponse(
+    row_html = templates.get_template("partials/order_row.html").render({
+        "request": request,
+        "order": dto,
+    })
+    toast_html = render_toast_oob(
+        templates=templates,
         request=request,
-        name="partials/order_row.html",
-        context={
-            "order": dto,
-        },
+        message=f"電子發票開立成功！發票號碼：{inv.invoice_number}，已自動計入營業稅與銷貨收入。",
+        type="success",
+        undo_url=None,
+        ttl_seconds=6,
     )
+    return HTMLResponse(content=f"{row_html}\n{toast_html}")
+
 
 
 @router.get("/{order_id}/label.pdf")
@@ -266,33 +362,37 @@ async def download_shipping_label(
 ):
     with db.transaction() as conn:
         if do_id and do_id.strip():
-            row = conn.execute(
+            rows = conn.execute(
                 "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ? AND do_id = ?",
                 (order_id, do_id.strip()),
-            ).fetchone()
+            ).fetchall()
         else:
-            row = conn.execute(
-                "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ? ORDER BY rowid DESC LIMIT 1",
+            rows = conn.execute(
+                "SELECT do_id, order_id, warehouse_id, tracking_number FROM delivery_orders WHERE order_id = ? ORDER BY rowid ASC",
                 (order_id,),
-            ).fetchone()
+            ).fetchall()
 
-    if not row:
+    if not rows:
         raise HTTPException(status_code=404, detail="找不到該出貨單 (Shipping delivery order not found)")
 
     printer = PdfPrinterAdapter()
-    label_data = ShippingLabelData(
-        do_id=row["do_id"],
-        order_id=row["order_id"],
-        recipient_name="收件客戶",
-        recipient_phone="0912-345-678",
-        shipping_address="台北市信義區信義路五段7號",
-        tracking_number=row["tracking_number"] or "TRK-UNKNOWN",
-    )
-    pdf_bytes = printer.generate_shipping_label_pdf(label_data)
+    labels = [
+        ShippingLabelData(
+            do_id=r["do_id"],
+            order_id=r["order_id"],
+            recipient_name="收件客戶",
+            recipient_phone="0912-345-678",
+            shipping_address="台北市信義區信義路五段7號",
+            tracking_number=r["tracking_number"] or "TRK-UNKNOWN",
+        )
+        for r in rows
+    ]
+    pdf_bytes = printer.generate_shipping_labels_pdf(labels, page_format="100x150")
+    filename = f"shipping_label_{rows[0]['do_id']}.pdf" if len(rows) == 1 else f"shipping_labels_{order_id}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename=shipping_label_{row['do_id']}.pdf"},
+        headers={"Content-Disposition": f"inline; filename={filename}"},
     )
 
 

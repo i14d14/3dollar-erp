@@ -33,6 +33,7 @@ class OrderItem(DomainModel):
 class SalesOrder(DomainModel):
     order_id: str
     customer_id: str
+    warehouse_id: str = "WH-MAIN"
     channel: OrderChannel = OrderChannel.DIRECT
     status: OrderStatus = OrderStatus.DRAFT
     total_amount: Decimal = Decimal("0.0")

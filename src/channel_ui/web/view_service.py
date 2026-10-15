@@ -1,6 +1,7 @@
 from __future__ import annotations
 import datetime
 from decimal import Decimal
+import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.channel_ui.web.dtos import (
@@ -12,12 +13,18 @@ from src.channel_ui.web.dtos import (
     CrmSummaryDTO,
     DashboardSummaryDTO,
     DealCardDTO,
+    DeliveryAllocationViewDTO,
+    DeliveryOrderViewDTO,
     IncomeStatementViewDTO,
     InventoryStockDTO,
     JournalEntryViewDTO,
     JournalLineViewDTO,
     LowStockItemDTO,
     OrderRowDTO,
+    OrderShipModalDTO,
+    OrderShipModalItemDTO,
+    PurchaseOrderItemDTO,
+    PurchaseOrderRowDTO,
     StockLedgerRowDTO,
     TrialBalanceRowDTO,
     TrialBalanceViewDTO,
@@ -33,6 +40,13 @@ STATUS_BADGES: Dict[str, str] = {
     "SHIPPED": "bg-amber-100 text-amber-700 border border-amber-300",
     "COMPLETED": "bg-emerald-100 text-emerald-700 border border-emerald-300",
     "CANCELLED": "bg-rose-100 text-rose-700 border border-rose-300",
+}
+
+PO_STATUS_BADGES: Dict[str, Tuple[str, str]] = {
+    "DRAFT": ("草稿 (DRAFT)", "bg-slate-100 text-slate-700 border border-slate-300"),
+    "SUBMITTED": ("待到貨 (SUBMITTED)", "bg-sky-100 text-sky-800 border border-sky-300"),
+    "RECEIVED": ("已驗收入庫 (RECEIVED)", "bg-emerald-100 text-emerald-800 border border-emerald-300"),
+    "CANCELLED": ("已取消 (CANCELLED)", "bg-rose-100 text-rose-800 border border-rose-300"),
 }
 
 CRM_STAGE_BADGES: Dict[str, Tuple[str, str]] = {
@@ -70,27 +84,51 @@ class WebViewService:
             # 3. Low stock alerts count & items
             stock_rows = conn.execute(
                 """
-                SELECT p.sku, p.name, p.safety_stock, w.name as warehouse_name,
+                SELECT p.sku, p.name,
+                       COALESCE(wsl.safety_stock, p.safety_stock, 10) as effective_safety_stock,
+                       w.warehouse_id, w.name as warehouse_name,
                        COALESCE(SUM(l.qty_delta), 0) as physical_balance
                 FROM products p
                 CROSS JOIN warehouses w
+                LEFT JOIN warehouse_stock_levels wsl ON wsl.warehouse_id = w.warehouse_id AND wsl.sku = p.sku
                 LEFT JOIN stock_ledger l ON l.sku = p.sku AND l.warehouse_id = w.warehouse_id
                 WHERE p.is_active = 1 AND w.is_active = 1
                 GROUP BY p.sku, w.warehouse_id
-                HAVING physical_balance < p.safety_stock
+                HAVING physical_balance < effective_safety_stock
                 ORDER BY p.sku ASC
                 """
             ).fetchall()
 
             low_stock_items: List[LowStockItemDTO] = []
             for r in stock_rows:
+                bal = Decimal(str(r["physical_balance"]))
+                safe = int(r["effective_safety_stock"])
+                suggested_qty = max(1, safe - int(bal))
+                
+                # Fetch recent supplier if available
+                last_supplier_row = conn.execute(
+                    """
+                    SELECT po.supplier_name
+                    FROM purchase_order_items poi
+                    JOIN purchase_orders po ON po.po_id = poi.po_id
+                    WHERE poi.sku = ?
+                    ORDER BY po.created_at DESC
+                    LIMIT 1
+                    """,
+                    (r["sku"],),
+                ).fetchone()
+                suggested_supplier = last_supplier_row["supplier_name"] if last_supplier_row else ""
+
                 low_stock_items.append(
                     LowStockItemDTO(
                         sku=r["sku"],
                         product_name=r["name"],
-                        physical_balance=Decimal(str(r["physical_balance"])),
-                        safety_stock=int(r["safety_stock"]),
+                        physical_balance=bal,
+                        safety_stock=safe,
                         warehouse_name=r["warehouse_name"],
+                        warehouse_id=r["warehouse_id"],
+                        suggested_qty=suggested_qty,
+                        suggested_supplier=suggested_supplier,
                     )
                 )
 
@@ -116,16 +154,18 @@ class WebViewService:
         with self.db.transaction() as conn:
             rows = conn.execute(
                 """
-                SELECT so.order_id, so.customer_id, so.channel, so.status, so.total_amount, so.created_at,
+                SELECT so.order_id, so.customer_id, so.warehouse_id, so.channel, so.status, so.total_amount, so.created_at,
                        do.do_id, do.tracking_number,
                        inv.invoice_number,
-                       ar.ar_id
+                       ar.ar_id,
+                       c.company_name as customer_name
                 FROM sales_orders so
                 LEFT JOIN delivery_orders do ON do.do_id = (
                     SELECT do_id FROM delivery_orders WHERE order_id = so.order_id ORDER BY rowid DESC LIMIT 1
                 )
                 LEFT JOIN invoices inv ON inv.order_id = so.order_id
                 LEFT JOIN accounts_receivable ar ON ar.order_id = so.order_id
+                LEFT JOIN crm_contacts c ON c.contact_id = so.customer_id
                 ORDER BY so.created_at DESC
                 LIMIT ?
                 """,
@@ -153,6 +193,8 @@ class WebViewService:
             do_list = dos_by_order.get(oid, [do_id] if do_id else [])
 
             is_reconciled = bool(do_id and inv_num and ar_id)
+            wh = r["warehouse_id"] if ("warehouse_id" in r.keys() and r["warehouse_id"]) else "WH-MAIN"
+            cust_name = r["customer_name"] if ("customer_name" in r.keys() and r["customer_name"]) else None
 
             orders.append(
                 OrderRowDTO(
@@ -163,6 +205,8 @@ class WebViewService:
                     status_badge_class=STATUS_BADGES.get(status, STATUS_BADGES["DRAFT"]),
                     total_amount_formatted=f"NT$ {Decimal(str(r['total_amount'])):,.2f}",
                     created_at=str(r["created_at"])[:16],
+                    warehouse_id=wh,
+                    customer_name=cust_name,
                     do_id=do_id,
                     tracking_number=r["tracking_number"],
                     invoice_number=inv_num,
@@ -182,16 +226,18 @@ class WebViewService:
         with self.db.transaction() as conn:
             r = conn.execute(
                 """
-                SELECT so.order_id, so.customer_id, so.channel, so.status, so.total_amount, so.created_at,
+                SELECT so.order_id, so.customer_id, so.warehouse_id, so.channel, so.status, so.total_amount, so.created_at,
                        do.do_id, do.tracking_number,
                        inv.invoice_number,
-                       ar.ar_id
+                       ar.ar_id,
+                       c.company_name as customer_name
                 FROM sales_orders so
                 LEFT JOIN delivery_orders do ON do.do_id = (
                     SELECT do_id FROM delivery_orders WHERE order_id = so.order_id ORDER BY rowid DESC LIMIT 1
                 )
                 LEFT JOIN invoices inv ON inv.order_id = so.order_id
                 LEFT JOIN accounts_receivable ar ON ar.order_id = so.order_id
+                LEFT JOIN crm_contacts c ON c.contact_id = so.customer_id
                 WHERE so.order_id = ?
                 """,
                 (order_id,),
@@ -212,6 +258,8 @@ class WebViewService:
         ar_id = r["ar_id"]
 
         is_reconciled = bool(do_id and inv_num and ar_id)
+        wh = r["warehouse_id"] if ("warehouse_id" in r.keys() and r["warehouse_id"]) else "WH-MAIN"
+        cust_name = r["customer_name"] if ("customer_name" in r.keys() and r["customer_name"]) else None
 
         return OrderRowDTO(
             order_id=r["order_id"],
@@ -221,6 +269,8 @@ class WebViewService:
             status_badge_class=STATUS_BADGES.get(status, STATUS_BADGES["DRAFT"]),
             total_amount_formatted=f"NT$ {Decimal(str(r['total_amount'])):,.2f}",
             created_at=str(r["created_at"])[:16],
+            warehouse_id=wh,
+            customer_name=cust_name,
             do_id=do_id,
             tracking_number=r["tracking_number"],
             invoice_number=inv_num,
@@ -234,12 +284,127 @@ class WebViewService:
             delivery_order_ids=delivery_order_ids,
         )
 
+    def get_ship_modal_context(self, order_id: str) -> Dict[str, Any]:
+        with self.db.transaction() as conn:
+            r_order = conn.execute(
+                """
+                SELECT so.order_id, so.customer_id, so.warehouse_id, so.status,
+                       c.company_name as customer_name
+                FROM sales_orders so
+                LEFT JOIN crm_contacts c ON c.contact_id = so.customer_id
+                WHERE so.order_id = ?
+                """,
+                (order_id,),
+            ).fetchone()
+            if not r_order:
+                raise ValueError(f"查無銷售訂單 {order_id} (Sales order not found)")
+
+            item_rows = conn.execute(
+                """
+                SELECT oi.item_id, oi.order_id, oi.sku, oi.qty, oi.shipped_quantity, oi.unit_price, oi.subtotal,
+                       p.name as product_name
+                FROM sales_order_items oi
+                LEFT JOIN products p ON p.sku = oi.sku
+                WHERE oi.order_id = ?
+                ORDER BY oi.rowid ASC
+                """,
+                (order_id,),
+            ).fetchall()
+
+            wh = r_order["warehouse_id"] if ("warehouse_id" in r_order.keys() and r_order["warehouse_id"]) else "WH-MAIN"
+            cust_name = r_order["customer_name"] if ("customer_name" in r_order.keys() and r_order["customer_name"]) else None
+
+            modal_items: List[OrderShipModalItemDTO] = []
+            for it in item_rows:
+                qty = Decimal(str(it["qty"]))
+                shipped = Decimal(str(it["shipped_quantity"] or "0.0"))
+                rem = max(Decimal("0.0"), qty - shipped)
+                pname = it["product_name"] if ("product_name" in it.keys() and it["product_name"]) else it["sku"]
+                modal_items.append(
+                    OrderShipModalItemDTO(
+                        item_id=it["item_id"],
+                        order_id=it["order_id"],
+                        sku=it["sku"],
+                        product_name=pname,
+                        qty=qty,
+                        remaining_qty=rem,
+                        shipped_qty=shipped,
+                        unit_price=Decimal(str(it["unit_price"])),
+                        subtotal=Decimal(str(it["subtotal"])),
+                    )
+                )
+
+            modal_order = OrderShipModalDTO(
+                order_id=r_order["order_id"],
+                customer_id=r_order["customer_id"],
+                customer_name=cust_name,
+                warehouse_id=wh,
+                items=modal_items,
+            )
+
+            return {
+                "order": modal_order,
+                "customer_name": cust_name,
+            }
+
+    def get_order_deliveries_view(self, order_id: str) -> List[DeliveryOrderViewDTO]:
+        with self.db.transaction() as conn:
+            do_rows = conn.execute(
+                "SELECT do_id, order_id, warehouse_id, tracking_number, shipped_at FROM delivery_orders WHERE order_id = ? ORDER BY rowid ASC",
+                (order_id,),
+            ).fetchall()
+            if not do_rows:
+                return []
+
+            alloc_rows = conn.execute(
+                """
+                SELECT da.allocation_id, da.do_id, da.order_id, da.item_id, da.sku, da.allocated_qty, da.created_at,
+                       p.name as product_name
+                FROM delivery_allocations da
+                LEFT JOIN products p ON p.sku = da.sku
+                WHERE da.order_id = ?
+                ORDER BY da.rowid ASC
+                """,
+                (order_id,),
+            ).fetchall()
+
+            allocs_by_do: Dict[str, List[DeliveryAllocationViewDTO]] = {}
+            for r in alloc_rows:
+                pname = r["product_name"] if ("product_name" in r.keys() and r["product_name"]) else r["sku"]
+                allocs_by_do.setdefault(r["do_id"], []).append(
+                    DeliveryAllocationViewDTO(
+                        allocation_id=r["allocation_id"],
+                        do_id=r["do_id"],
+                        order_id=r["order_id"],
+                        item_id=r["item_id"],
+                        sku=r["sku"],
+                        product_name=pname,
+                        allocated_qty=Decimal(str(r["allocated_qty"])),
+                        created_at=str(r["created_at"]) if r["created_at"] else None,
+                    )
+                )
+
+            results: List[DeliveryOrderViewDTO] = []
+            for d in do_rows:
+                results.append(
+                    DeliveryOrderViewDTO(
+                        do_id=d["do_id"],
+                        order_id=d["order_id"],
+                        warehouse_id=d["warehouse_id"],
+                        tracking_number=d["tracking_number"],
+                        shipped_at=str(d["shipped_at"]) if d["shipped_at"] else None,
+                        allocations=allocs_by_do.get(d["do_id"], []),
+                    )
+                )
+            return results
+
     def list_inventory_stocks(self) -> List[InventoryStockDTO]:
         with self.db.transaction() as conn:
             rows = conn.execute(
                 """
                 SELECT w.warehouse_id, w.name as warehouse_name,
-                       p.sku, p.name as product_name, p.safety_stock,
+                       p.sku, p.name as product_name,
+                       COALESCE(wsl.safety_stock, p.safety_stock, 10) as safety_stock,
                        COALESCE(SUM(l.qty_delta), 0) as physical_balance,
                        COALESCE((
                            SELECT SUM(locked_qty)
@@ -248,6 +413,7 @@ class WebViewService:
                        ), 0) as locked_qty
                 FROM warehouses w
                 CROSS JOIN products p
+                LEFT JOIN warehouse_stock_levels wsl ON wsl.warehouse_id = w.warehouse_id AND wsl.sku = p.sku
                 LEFT JOIN stock_ledger l ON l.warehouse_id = w.warehouse_id AND l.sku = p.sku
                 WHERE w.is_active = 1 AND p.is_active = 1
                 GROUP BY w.warehouse_id, p.sku
@@ -275,6 +441,46 @@ class WebViewService:
                 )
             )
         return stocks
+
+    def get_inventory_stock_row(self, warehouse_id: str, sku: str) -> Optional[InventoryStockDTO]:
+        with self.db.transaction() as conn:
+            r = conn.execute(
+                """
+                SELECT w.warehouse_id, w.name as warehouse_name,
+                       p.sku, p.name as product_name,
+                       COALESCE(wsl.safety_stock, p.safety_stock, 10) as safety_stock,
+                       COALESCE(SUM(l.qty_delta), 0) as physical_balance,
+                       COALESCE((
+                           SELECT SUM(locked_qty)
+                           FROM stock_locks
+                           WHERE warehouse_id = w.warehouse_id AND sku = p.sku AND status = 'LOCKED'
+                       ), 0) as locked_qty
+                FROM warehouses w
+                JOIN products p ON p.sku = ?
+                LEFT JOIN warehouse_stock_levels wsl ON wsl.warehouse_id = w.warehouse_id AND wsl.sku = p.sku
+                LEFT JOIN stock_ledger l ON l.warehouse_id = w.warehouse_id AND l.sku = p.sku
+                WHERE w.warehouse_id = ?
+                GROUP BY w.warehouse_id, p.sku
+                """,
+                (sku, warehouse_id),
+            ).fetchone()
+            if not r:
+                return None
+            physical = Decimal(str(r["physical_balance"]))
+            locked = Decimal(str(r["locked_qty"]))
+            available = physical - locked
+            safety = int(r["safety_stock"])
+            return InventoryStockDTO(
+                warehouse_id=r["warehouse_id"],
+                warehouse_name=r["warehouse_name"],
+                sku=r["sku"],
+                product_name=r["product_name"],
+                physical_balance=physical,
+                locked_qty=locked,
+                available_qty=available,
+                safety_stock=safety,
+                is_low_stock=(physical < safety),
+            )
 
     def list_recent_ledger_movements(self, limit: int = 50) -> List[StockLedgerRowDTO]:
         with self.db.transaction() as conn:
@@ -350,6 +556,11 @@ class WebViewService:
             "MANUAL": "bg-slate-100 text-slate-700 border-slate-300",
         }
 
+        cust_map: Dict[str, str] = {}
+        with self.db.transaction() as conn:
+            c_rows = conn.execute("SELECT contact_id, company_name FROM crm_contacts").fetchall()
+            cust_map = {r["contact_id"]: (r["company_name"] or "").strip() for r in c_rows if r["company_name"]}
+
         dtos: List[JournalEntryViewDTO] = []
         for e in entries:
             total_dr = sum((line.debit for line in e.lines), Decimal("0.0"))
@@ -368,6 +579,14 @@ class WebViewService:
 
             badge_class = event_badges.get(e.source_event, "bg-gray-100 text-gray-700 border-gray-300")
 
+            desc = e.description
+            if "收取客戶 CUST-" in desc:
+                for cid, cname in cust_map.items():
+                    target_old = f"收取客戶 {cid} 款項"
+                    if target_old in desc:
+                        desc = desc.replace(target_old, f"收取客戶 {cname} ({cid}) 款項")
+                        break
+
             dtos.append(
                 JournalEntryViewDTO(
                     entry_id=e.entry_id,
@@ -375,7 +594,7 @@ class WebViewService:
                     source_event=e.source_event,
                     source_event_badge=badge_class,
                     reference_id=e.reference_id,
-                    description=e.description,
+                    description=desc,
                     lines=line_dtos,
                     total_debit_formatted=f"NT$ {total_dr:,.2f}",
                     total_credit_formatted=f"NT$ {total_cr:,.2f}",
@@ -473,6 +692,22 @@ class WebViewService:
             AgingBucket.DAYS_60_PLUS: "bg-rose-50 text-rose-700 border-rose-300",
         }
 
+        contact_map: Dict[str, str] = {}
+        if report_type == "RECEIVABLE" and aging.items:
+            cust_ids = list({it.partner_name for it in aging.items if it.partner_name})
+            if cust_ids:
+                with self.db.transaction() as conn:
+                    placeholders = ",".join("?" for _ in cust_ids)
+                    rows = conn.execute(
+                        f"SELECT contact_id, company_name FROM crm_contacts WHERE contact_id IN ({placeholders})",
+                        cust_ids,
+                    ).fetchall()
+                    contact_map = {
+                        r["contact_id"]: (r["company_name"] or "").strip()
+                        for r in rows
+                        if r["company_name"] and r["company_name"].strip()
+                    }
+
         items: List[AgingItemViewDTO] = []
         for it in aging.items:
             badge_class = bucket_badges.get(it.bucket, "bg-gray-50 text-gray-700 border-gray-300")
@@ -485,11 +720,20 @@ class WebViewService:
             else:
                 overdue_color = "text-rose-600 font-bold"
 
+            if report_type == "RECEIVABLE":
+                raw_id = it.partner_name
+                c_name = contact_map.get(raw_id)
+                partner_display = c_name if c_name else raw_id
+                partner_id = raw_id
+            else:
+                partner_display = it.partner_name
+                partner_id = ""
+
             items.append(
                 AgingItemViewDTO(
                     item_id=it.item_id,
                     reference_id=it.reference_id,
-                    partner_name=it.partner_name,
+                    partner_name=partner_display,
                     amount_formatted=f"NT$ {it.amount:,.2f}",
                     paid_amount_formatted=f"NT$ {it.paid_amount:,.2f}",
                     outstanding_formatted=f"NT$ {it.outstanding_amount:,.2f}",
@@ -500,6 +744,7 @@ class WebViewService:
                     bucket_badge_class=badge_class,
                     status=it.status,
                     can_settle=(it.outstanding_amount > Decimal("0.0")),
+                    partner_id=partner_id,
                 )
             )
 
@@ -586,6 +831,24 @@ class WebViewService:
                 if did not in latest_quote_map:
                     latest_quote_map[did] = (qr["quote_id"], qr["quote_number"])
 
+            # Pre-fetch deal items
+            item_rows = conn.execute(
+                """
+                SELECT di.deal_id, di.sku, di.qty, di.unit_price, di.subtotal, p.name as product_name
+                FROM crm_deal_items di
+                LEFT JOIN products p ON di.sku = p.sku
+                ORDER BY di.rowid ASC
+                """
+            ).fetchall()
+            items_by_deal: Dict[str, List[Dict[str, Any]]] = {}
+            for ir in item_rows:
+                items_by_deal.setdefault(ir["deal_id"], []).append({
+                    "sku": ir["sku"],
+                    "product_name": ir["product_name"] or ir["sku"],
+                    "qty": float(ir["qty"]),
+                    "price": float(ir["unit_price"]),
+                })
+
         lead_deals: List[DealCardDTO] = []
         discovery_deals: List[DealCardDTO] = []
         proposal_deals: List[DealCardDTO] = []
@@ -600,6 +863,10 @@ class WebViewService:
             quote_info = latest_quote_map.get(deal_id)
             quote_id = quote_info[0] if quote_info else None
             quote_num = quote_info[1] if quote_info else None
+
+            deal_items = items_by_deal.get(deal_id, [])
+            items_summary = "、".join(f"{it['product_name']} x {int(it['qty'])}" for it in deal_items)
+            items_json_str = json.dumps(deal_items, ensure_ascii=False)
 
             label, badge_class = CRM_STAGE_BADGES.get(
                 stage, (stage, "bg-slate-100 text-slate-700")
@@ -618,6 +885,8 @@ class WebViewService:
                 converted_order_id=converted_order_id,
                 latest_quote_id=quote_id,
                 latest_quote_number=quote_num,
+                items_summary=items_summary,
+                items_json_str=items_json_str,
                 can_advance_discovery=(stage == "LEAD"),
                 can_advance_proposal=(stage in ("LEAD", "DISCOVERY")),
                 can_convert_order=(stage == "PROPOSAL" and not converted_order_id and quote_id is not None),
@@ -683,5 +952,208 @@ class WebViewService:
                 }
                 for r in rows
             ]
+
+    def list_active_products_for_po(self) -> List[Dict[str, Any]]:
+        with self.db.transaction() as conn:
+            rows = conn.execute(
+                "SELECT sku, name, base_unit, cost_price, selling_price FROM products WHERE is_active = 1 ORDER BY sku ASC"
+            ).fetchall()
+            return [
+                {
+                    "sku": r["sku"],
+                    "name": r["name"],
+                    "unit": r["base_unit"],
+                    "cost_price": float(r["cost_price"]),
+                    "cost_price_formatted": f"NT$ {float(r['cost_price']):,.2f}",
+                }
+                for r in rows
+            ]
+
+    def list_warehouses_for_select(self) -> List[Dict[str, Any]]:
+        with self.db.transaction() as conn:
+            rows = conn.execute(
+                "SELECT warehouse_id, name FROM warehouses WHERE is_active = 1 ORDER BY warehouse_id ASC"
+            ).fetchall()
+            return [
+                {
+                    "warehouse_id": r["warehouse_id"],
+                    "name": r["name"],
+                    "warehouse_name": r["name"],
+                }
+                for r in rows
+            ]
+
+    def list_purchase_orders(self, limit: int = 50) -> List[PurchaseOrderRowDTO]:
+        with self.db.transaction() as conn:
+            po_rows = conn.execute(
+                """
+                SELECT p.po_id, p.supplier_name, p.warehouse_id, p.status, p.total_amount, p.created_at,
+                       g.grn_id
+                FROM purchase_orders p
+                LEFT JOIN goods_receipt_notes g ON p.po_id = g.po_id
+                ORDER BY p.created_at DESC, p.po_id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+
+            if not po_rows:
+                return []
+
+            prod_rows = conn.execute("SELECT sku, name FROM products").fetchall()
+            prod_name_map = {r["sku"]: r["name"] for r in prod_rows}
+
+            results = []
+            for r in po_rows:
+                po_id = r["po_id"]
+                item_rows = conn.execute(
+                    """
+                    SELECT sku, qty, unit_cost, subtotal
+                    FROM purchase_order_items
+                    WHERE po_id = ?
+                    ORDER BY po_item_id ASC
+                    """,
+                    (po_id,),
+                ).fetchall()
+
+                items: List[PurchaseOrderItemDTO] = []
+                summary_parts = []
+                for it in item_rows:
+                    sku = it["sku"]
+                    pname = prod_name_map.get(sku, sku)
+                    qty = Decimal(str(it["qty"]))
+                    unit_cost = Decimal(str(it["unit_cost"]))
+                    subtotal = Decimal(str(it["subtotal"]))
+                    items.append(
+                        PurchaseOrderItemDTO(
+                            sku=sku,
+                            product_name=pname,
+                            qty=qty,
+                            unit_cost=unit_cost,
+                            subtotal=subtotal,
+                            qty_formatted=f"{qty:,.0f}" if qty % 1 == 0 else f"{qty:,.2f}",
+                            unit_cost_formatted=f"NT$ {unit_cost:,.2f}",
+                            subtotal_formatted=f"NT$ {subtotal:,.2f}",
+                        )
+                    )
+                    summary_parts.append(f"{pname} ({sku}) x {qty:g}")
+
+                status = r["status"]
+                label, badge_class = PO_STATUS_BADGES.get(
+                    status, (status, "bg-slate-100 text-slate-700 border-slate-300")
+                )
+                tot = Decimal(str(r["total_amount"]))
+                created_at_raw = r["created_at"]
+                created_at_fmt = str(created_at_raw)[:16].replace("T", " ") if created_at_raw else "-"
+                wh = r["warehouse_id"] if ("warehouse_id" in r.keys() and r["warehouse_id"]) else "WH-MAIN"
+
+                results.append(
+                    PurchaseOrderRowDTO(
+                        po_id=po_id,
+                        supplier_name=r["supplier_name"],
+                        status=status,
+                        status_label=label,
+                        status_badge_class=badge_class,
+                        total_amount_formatted=f"NT$ {tot:,.2f}",
+                        created_at_formatted=created_at_fmt,
+                        warehouse_id=wh,
+                        items=items,
+                        items_summary=", ".join(summary_parts) if summary_parts else "無明細",
+                        can_submit=(status == "DRAFT"),
+                        can_receive=(status == "SUBMITTED"),
+                        grn_id=r["grn_id"],
+                    )
+                )
+            return results
+
+    def get_purchase_order_row(self, po_id: str) -> Optional[PurchaseOrderRowDTO]:
+        with self.db.transaction() as conn:
+            r = conn.execute(
+                """
+                SELECT p.po_id, p.supplier_name, p.warehouse_id, p.status, p.total_amount, p.created_at,
+                       g.grn_id
+                FROM purchase_orders p
+                LEFT JOIN goods_receipt_notes g ON p.po_id = g.po_id
+                WHERE p.po_id = ?
+                """,
+                (po_id,),
+            ).fetchone()
+            if not r:
+                return None
+
+            prod_rows = conn.execute("SELECT sku, name FROM products").fetchall()
+            prod_name_map = {row["sku"]: row["name"] for row in prod_rows}
+
+            item_rows = conn.execute(
+                """
+                SELECT sku, qty, unit_cost, subtotal
+                FROM purchase_order_items
+                WHERE po_id = ?
+                ORDER BY po_item_id ASC
+                """,
+                (po_id,),
+            ).fetchall()
+
+            wh = r["warehouse_id"] if ("warehouse_id" in r.keys() and r["warehouse_id"]) else "WH-MAIN"
+
+            items: List[PurchaseOrderItemDTO] = []
+            summary_parts = []
+            for it in item_rows:
+                sku = it["sku"]
+                pname = prod_name_map.get(sku, sku)
+                qty = Decimal(str(it["qty"]))
+                unit_cost = Decimal(str(it["unit_cost"]))
+                subtotal = Decimal(str(it["subtotal"]))
+
+                lvl = conn.execute(
+                    "SELECT safety_stock FROM warehouse_stock_levels WHERE warehouse_id = ? AND sku = ?",
+                    (wh, sku),
+                ).fetchone()
+                is_first = (lvl is None)
+                if lvl:
+                    current_safe = int(lvl["safety_stock"])
+                else:
+                    prod_row = conn.execute("SELECT safety_stock FROM products WHERE sku = ?", (sku,)).fetchone()
+                    current_safe = int(prod_row["safety_stock"]) if (prod_row and prod_row["safety_stock"] is not None) else 10
+
+                items.append(
+                    PurchaseOrderItemDTO(
+                        sku=sku,
+                        product_name=pname,
+                        qty=qty,
+                        unit_cost=unit_cost,
+                        subtotal=subtotal,
+                        qty_formatted=f"{qty:,.0f}" if qty % 1 == 0 else f"{qty:,.2f}",
+                        unit_cost_formatted=f"NT$ {unit_cost:,.2f}",
+                        subtotal_formatted=f"NT$ {subtotal:,.2f}",
+                        is_first_inbound=is_first,
+                        current_safety_stock=current_safe,
+                    )
+                )
+                summary_parts.append(f"{pname} ({sku}) x {qty:g}")
+
+            status = r["status"]
+            label, badge_class = PO_STATUS_BADGES.get(
+                status, (status, "bg-slate-100 text-slate-700 border-slate-300")
+            )
+            tot = Decimal(str(r["total_amount"]))
+            created_at_raw = r["created_at"]
+            created_at_fmt = str(created_at_raw)[:16].replace("T", " ") if created_at_raw else "-"
+
+            return PurchaseOrderRowDTO(
+                po_id=po_id,
+                supplier_name=r["supplier_name"],
+                status=status,
+                status_label=label,
+                status_badge_class=badge_class,
+                total_amount_formatted=f"NT$ {tot:,.2f}",
+                created_at_formatted=created_at_fmt,
+                warehouse_id=wh,
+                items=items,
+                items_summary=", ".join(summary_parts) if summary_parts else "無明細",
+                can_submit=(status == "DRAFT"),
+                can_receive=(status == "SUBMITTED"),
+                grn_id=r["grn_id"],
+            )
 
 

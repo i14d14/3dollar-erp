@@ -8,6 +8,7 @@ class ReferenceType(str, Enum):
     PURCHASE = "PURCHASE"
     SALE = "SALE"
     TRANSFER = "TRANSFER"
+    TRANSFER_REVERSAL = "TRANSFER_REVERSAL"
     ADJUSTMENT = "ADJUSTMENT"
 
 class LockStatus(str, Enum):
@@ -76,5 +77,15 @@ class StockLockNotFoundError(InventoryError):
 
 class InvalidLockStatusError(InventoryError):
     """Raised when an invalid operation is attempted on a stock lock."""
+    pass
+
+
+class TransferNotFoundError(InventoryError):
+    """Raised when transfer records cannot be found for reversal."""
+    pass
+
+
+class TransferAlreadyReversedError(InventoryError):
+    """Raised when a transfer has already been reversed."""
     pass
 

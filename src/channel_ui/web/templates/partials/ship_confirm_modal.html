@@ -1,0 +1,87 @@
+<div id="ship-confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-fade-in">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div>
+        <h3 class="font-bold text-slate-800 text-base">一鍵出貨確認 (Order Shipment Confirmation)</h3>
+        <p class="text-xs text-slate-500 font-mono mt-0.5">訂單編號：{{ order.order_id }} • 客戶：{% if customer_name %}<span class="font-semibold text-slate-700">{{ customer_name }}</span> ({{ order.customer_id }}){% else %}{{ order.customer_id }}{% endif %}</p>
+      </div>
+      <button type="button" onclick="document.getElementById('ship-confirm-modal').remove()" class="text-slate-400 hover:text-slate-700 text-lg leading-none cursor-pointer">&times;</button>
+    </div>
+    
+    <form hx-post="/orders/{{ order.order_id }}/ship"
+          hx-target="#order-row-{{ order.order_id }}"
+          hx-swap="outerHTML"
+          hx-on::after-request="if(event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { document.getElementById('ship-confirm-modal').remove(); }"
+          novalidate
+          class="p-5 space-y-4">
+      
+      <!-- Shipping Destination Info -->
+      <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+        <div class="flex justify-between">
+          <span class="text-slate-500">出貨來源倉：</span>
+          <span class="font-semibold text-slate-800 font-mono">{{ order.warehouse_id or 'WH-MAIN' }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">收件客戶：</span>
+          <span class="font-medium text-slate-800">
+            {% if customer_name %}
+              <span class="font-semibold">{{ customer_name }}</span> <span class="text-slate-400 font-mono font-normal">({{ order.customer_id }})</span>
+            {% else %}
+              {{ order.customer_id }}
+            {% endif %}
+            <span class="text-slate-400 font-normal"> (0912-345-678)</span>
+          </span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">配送地址：</span>
+          <span class="font-medium text-slate-700">台北市信義區信義路五段7號</span>
+        </div>
+      </div>
+
+      <!-- Items to Ship Breakdown -->
+      <div>
+        <div class="text-xs font-semibold text-slate-700 mb-1.5">本次預計出貨物料明細：</div>
+        <div class="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100 text-xs">
+          <div class="grid grid-cols-12 bg-slate-50 p-2 font-medium text-slate-500">
+            <div class="col-span-6">商品品名 / SKU</div>
+            <div class="col-span-3 text-right">訂單數量</div>
+            <div class="col-span-3 text-right">出貨數量</div>
+          </div>
+          {% for item in order.items %}
+          <div class="grid grid-cols-12 p-2.5 items-center">
+            <div class="col-span-6">
+              <div class="font-semibold text-slate-800">{{ item.product_name or item.sku }}</div>
+              <div class="font-mono text-xs text-slate-400">({{ item.sku }})</div>
+            </div>
+            <div class="col-span-3 text-right font-mono text-slate-500">{{ item.qty }}</div>
+            <div class="col-span-3 text-right font-mono font-bold text-indigo-700">{{ item.remaining_qty }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Warning & Impact Notice -->
+      <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs space-y-1 text-amber-900">
+        <div class="font-bold flex items-center gap-1.5 text-amber-800">
+          ⚠️ 出貨不可逆作業提醒：
+        </div>
+        <ul class="list-disc list-inside space-y-0.5 text-[11px] text-amber-800">
+          <li>送出後將立即從出貨倉 ({{ order.warehouse_id or 'WH-MAIN' }}) 扣減實體庫存並寫入出庫流水</li>
+          <li>自動產出出貨單 (DO) 與物流追蹤碼</li>
+          <li>自動觸發探吉會計完成銷貨成本 (COGS) 自動入帳</li>
+        </ul>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('ship-confirm-modal').remove()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">
+          取消
+        </button>
+        <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1 cursor-pointer">
+          <span>確認執行出貨 (扣庫)</span>
+          <span class="htmx-indicator animate-spin">⏳</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

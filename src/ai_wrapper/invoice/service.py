@@ -19,11 +19,27 @@ class InvoiceIntakeService:
     def match_invoice(self, invoice: ExtractedTaiwanInvoice) -> InvoiceMatchResult:
         """Check for duplicates and find matching open purchase orders."""
         with self.db.transaction() as conn:
-            # Check if invoice number is already mentioned in AP or notes
-            existing_ap = conn.execute(
-                "SELECT ap_id, supplier_name, amount FROM accounts_payable WHERE supplier_name = ? AND amount = ?",
-                (invoice.seller_name or "", float(invoice.total_amount)),
-            ).fetchone()
+            existing_ap_id = None
+            is_duplicate = False
+
+            # 1. Primary dupe check: by exact invoice number in general ledger / intake notes
+            if invoice.invoice_number and invoice.invoice_number != "UNKNOWN":
+                existing_entry = conn.execute(
+                    "SELECT entry_id, reference_id FROM journal_entries WHERE description LIKE ? ORDER BY created_at DESC LIMIT 1",
+                    (f"%發票: {invoice.invoice_number}%",),
+                ).fetchone()
+                if existing_entry:
+                    is_duplicate = True
+                    existing_ap_id = existing_entry["reference_id"]
+            else:
+                # 2. Fallback dupe check (only if invoice_number is unknown/missing): by supplier_name and exact amount
+                existing_ap = conn.execute(
+                    "SELECT ap_id, supplier_name, amount FROM accounts_payable WHERE supplier_name = ? AND amount = ?",
+                    (invoice.seller_name or "", float(invoice.total_amount)),
+                ).fetchone()
+                if existing_ap:
+                    is_duplicate = True
+                    existing_ap_id = existing_ap["ap_id"]
 
             # Find matching open purchase order (excluding already invoiced POs and synthetic PO-INV-*)
             matched_po = None
@@ -44,7 +60,7 @@ class InvoiceIntakeService:
                     matched_po = po_row["po_id"]
 
             status = "NEW"
-            if existing_ap:
+            if is_duplicate:
                 status = "ALREADY_RECORDED"
             elif matched_po:
                 status = "MATCHED_PO"
@@ -55,7 +71,7 @@ class InvoiceIntakeService:
                 extracted=invoice,
                 matched_po_id=matched_po,
                 matched_supplier=invoice.seller_name,
-                existing_ap_id=existing_ap["ap_id"] if existing_ap else None,
+                existing_ap_id=existing_ap_id,
                 status=status,
             )
 
@@ -69,6 +85,16 @@ class InvoiceIntakeService:
         """Create Accounts Payable (AP) and General Ledger entry from parsed electronic invoice."""
         supplier = supplier_name or invoice.seller_name or "外部供應商"
         amount = invoice.total_amount
+
+        # Check duplicate invoice number before creating AP or Journal Entry
+        if invoice.invoice_number and invoice.invoice_number != "UNKNOWN":
+            with self.db.transaction() as conn:
+                existing_entry = conn.execute(
+                    "SELECT entry_id, reference_id FROM journal_entries WHERE description LIKE ? LIMIT 1",
+                    (f"%發票: {invoice.invoice_number}%",),
+                ).fetchone()
+                if existing_entry:
+                    raise ValueError(f"發票號碼 {invoice.invoice_number} 已經於系統中註冊入帳，嚴禁重複登記！")
 
         with self.db.transaction() as conn:
             target_po_id = po_id

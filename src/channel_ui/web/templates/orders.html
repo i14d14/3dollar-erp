@@ -28,18 +28,18 @@
   <!-- Orders Table Container -->
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse">
+      <table data-testid="table-orders" class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs font-semibold border-b border-slate-200 uppercase tracking-wider">
             <th class="px-4 py-3">訂單編號 / 通路</th>
-            <th class="px-4 py-3">客戶代號 / 下單時間</th>
+            <th class="px-4 py-3">客戶名稱 / 下單時間</th>
             <th class="px-4 py-3">總金額</th>
             <th class="px-4 py-3">狀態</th>
             <th class="px-4 py-3">四單剛性勾稽狀態</th>
             <th class="px-4 py-3 text-right">作業執行與單據</th>
           </tr>
         </thead>
-        <tbody id="orders-tbody" class="divide-y divide-slate-100">
+        <tbody id="orders-tbody" data-testid="orders-tbody" class="divide-y divide-slate-100">
           {% for order in orders %}
             {% include "partials/order_row.html" %}
           {% else %}
@@ -55,4 +55,27 @@
   </div>
 
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get('highlight') || window.location.hash.replace('#order-row-', '').replace('#', '');
+    if (highlightId) {
+      const row = document.getElementById(`order-row-${highlightId}`);
+      if (row) {
+        // Smooth scroll to target order row
+        setTimeout(() => {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+
+        // Flash highlight with amber ring
+        row.classList.add('bg-amber-100', 'ring-2', 'ring-amber-400', 'ring-inset', 'transition-all', 'duration-500');
+        setTimeout(() => {
+          row.classList.remove('bg-amber-100', 'ring-2', 'ring-amber-400', 'ring-inset');
+          row.classList.add('bg-amber-50/80');
+        }, 3500);
+      }
+    }
+  });
+</script>
 {% endblock %}

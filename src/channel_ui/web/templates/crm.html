@@ -16,25 +16,14 @@
       <p class="text-xs text-slate-500 mt-0.5">名片建檔 ➔ 四段商機管線 ➔ DOCX/PDF 報價單套印 ➔ 贏單一鍵轉 ERP 訂單</p>
     </div>
     <div class="flex items-center gap-2">
-      <button onclick="document.getElementById('modal-new-contact').classList.remove('hidden')" class="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 shadow-sm transition">
+      <button data-testid="btn-new-contact" onclick="document.getElementById('modal-new-contact').classList.remove('hidden')" class="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg border border-slate-300 shadow-sm transition">
         <span>👤</span> 新增客戶
       </button>
-      <button onclick="document.getElementById('modal-new-deal').classList.remove('hidden')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+      <button data-testid="btn-new-deal" onclick="document.getElementById('modal-new-deal').classList.remove('hidden')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
         <span>✨</span> 建立新商機
       </button>
     </div>
   </div>
-
-  <!-- Success Notification Toast if passed -->
-  {% if success_message %}
-  <div class="p-3 text-xs text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg flex items-center justify-between shadow-sm animate-fade-in">
-    <div class="flex items-center gap-2">
-      <span class="text-emerald-600 font-bold text-sm">✅</span>
-      <span class="font-medium">{{ success_message }}</span>
-    </div>
-    <button onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 font-bold text-base leading-none">&times;</button>
-  </div>
-  {% endif %}
 
   <!-- KPI Summary Cards -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -74,10 +63,10 @@
 
   <!-- TAB 1: KANBAN BOARD -->
   {% if active_tab == 'kanban' %}
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+  <div data-testid="kanban-pipeline" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
 
     <!-- Column 1: 潛在 (LEAD) -->
-    <div class="bg-slate-100/70 rounded-xl p-3 border border-slate-200 flex flex-col min-h-[500px]">
+    <div data-testid="kanban-col-lead" class="bg-slate-100/70 rounded-xl p-3 border border-slate-200 flex flex-col min-h-[500px]">
       <div class="flex items-center justify-between mb-3 px-1">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
@@ -95,7 +84,7 @@
     </div>
 
     <!-- Column 2: 洽談 (DISCOVERY) -->
-    <div class="bg-sky-50/50 rounded-xl p-3 border border-sky-200/80 flex flex-col min-h-[500px]">
+    <div data-testid="kanban-col-discovery" class="bg-sky-50/50 rounded-xl p-3 border border-sky-200/80 flex flex-col min-h-[500px]">
       <div class="flex items-center justify-between mb-3 px-1">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
@@ -113,7 +102,7 @@
     </div>
 
     <!-- Column 3: 報價 (PROPOSAL) -->
-    <div class="bg-amber-50/50 rounded-xl p-3 border border-amber-200/80 flex flex-col min-h-[500px]">
+    <div data-testid="kanban-col-proposal" class="bg-amber-50/50 rounded-xl p-3 border border-amber-200/80 flex flex-col min-h-[500px]">
       <div class="flex items-center justify-between mb-3 px-1">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
@@ -130,8 +119,8 @@
       </div>
     </div>
 
-    <!-- Column 4: 結案 (WON / LOST) -->
-    <div class="bg-slate-100/70 rounded-xl p-3 border border-slate-200 flex flex-col min-h-[500px]">
+    <!-- Column 4: 結案 (WON / LOST) - 具備歷史折疊與內部滾動上限 -->
+    <div data-testid="kanban-col-won-lost" class="bg-slate-100/70 rounded-xl p-3 border border-slate-200 flex flex-col min-h-[500px] max-h-[800px]">
       <div class="flex items-center justify-between mb-3 px-1">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -139,16 +128,47 @@
         </div>
         <span class="text-xs px-2 py-0.5 rounded-full bg-white text-slate-700 font-bold border border-slate-200 shadow-2xs">{{ kanban.won_deals|length + kanban.lost_deals|length }}</span>
       </div>
-      <div class="space-y-3 flex-1">
-        <!-- Won deals -->
-        {% for deal in kanban.won_deals %}
-          {% include "partials/crm_deal_card.html" %}
-        {% endfor %}
-        <!-- Lost deals -->
-        {% for deal in kanban.lost_deals %}
-          {% include "partials/crm_deal_card.html" %}
-        {% endfor %}
-        {% if not kanban.won_deals and not kanban.lost_deals %}
+      
+      <div class="space-y-3 flex-1 overflow-y-auto pr-1">
+        {% if kanban.won_deals or kanban.lost_deals %}
+          <!-- Sub-section: 贏單 (WON) - 預設展開 -->
+          <details open class="group bg-white/80 rounded-xl border border-emerald-200/80 p-2 shadow-2xs">
+            <summary class="flex items-center justify-between cursor-pointer font-bold text-xs text-emerald-800 select-none py-1 px-1">
+              <div class="flex items-center gap-1.5">
+                <span>🏆</span>
+                <span>已成交贏單 (WON)</span>
+                <span class="px-1.5 py-0.2 bg-emerald-100 text-emerald-700 rounded-full text-[10px]">{{ kanban.won_deals|length }}</span>
+              </div>
+              <span class="text-[10px] text-emerald-500 transition-transform group-open:rotate-180">▼</span>
+            </summary>
+            <div class="space-y-2.5 mt-2.5 pt-2 border-t border-emerald-100">
+              {% for deal in kanban.won_deals %}
+                {% include "partials/crm_deal_card.html" %}
+              {% else %}
+                <div class="py-2 text-center text-[11px] text-slate-400">無贏單記錄</div>
+              {% endfor %}
+            </div>
+          </details>
+
+          <!-- Sub-section: 輸單 (LOST) - 預設折疊收合，避免過度堆疊 -->
+          <details class="group bg-white/60 rounded-xl border border-slate-200 p-2 shadow-2xs">
+            <summary class="flex items-center justify-between cursor-pointer font-bold text-xs text-slate-600 select-none py-1 px-1">
+              <div class="flex items-center gap-1.5">
+                <span>✕</span>
+                <span>結案輸單 (LOST)</span>
+                <span class="px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded-full text-[10px]">{{ kanban.lost_deals|length }}</span>
+              </div>
+              <span class="text-[10px] text-slate-400 transition-transform group-open:rotate-180">▼</span>
+            </summary>
+            <div class="space-y-2.5 mt-2.5 pt-2 border-t border-slate-100">
+              {% for deal in kanban.lost_deals %}
+                {% include "partials/crm_deal_card.html" %}
+              {% else %}
+                <div class="py-2 text-center text-[11px] text-slate-400">無輸單記錄</div>
+              {% endfor %}
+            </div>
+          </details>
+        {% else %}
           <div class="h-28 flex items-center justify-center text-xs text-slate-400 border border-dashed border-slate-300 rounded-lg">尚無結案記錄</div>
         {% endif %}
       </div>
@@ -331,20 +351,74 @@
           <label class="block text-xs font-semibold text-slate-700 mb-1">商機案名 <span class="text-rose-500">*</span></label>
           <input type="text" name="title" required placeholder="例如：2026 辦公室智慧終端硬體換新案" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">預估金額 (NT$)</label>
-            <input type="number" name="expected_amount" value="50000" min="0" step="1000" autocomplete="off" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">初始階段</label>
-            <select name="stage" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
-              <option value="LEAD">潛在商機 (LEAD)</option>
-              <option value="DISCOVERY">需求洽談 (DISCOVERY)</option>
-              <option value="PROPOSAL">方案報價 (PROPOSAL)</option>
-            </select>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">初始階段</label>
+          <select name="stage" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+            <option value="LEAD">潛在商機 (LEAD)</option>
+            <option value="DISCOVERY">需求洽談 (DISCOVERY)</option>
+            <option value="PROPOSAL">方案報價 (PROPOSAL)</option>
+          </select>
+        </div>
+
+        <!-- Multi-item Pricing Section (Optional) -->
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+          <div class="text-xs font-bold text-slate-700">商機預估物料明細 1 (選填)</div>
+          <div class="grid grid-cols-12 gap-2">
+            <div class="col-span-6">
+              <label class="block text-[11px] text-slate-500 mb-0.5">選擇品號 / 規格</label>
+              <select name="sku_1" onchange="updateDealItemPrice(this, 'deal_price_1')" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
+                <option value="">-- 無特定預估品項 (選填) --</option>
+                {% for p in products %}
+                  <option value="{{ p.sku }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.sku }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-span-3">
+              <label class="block text-[11px] text-slate-500 mb-0.5">數量</label>
+              <input type="number" id="deal_qty_1" name="qty_1" value="1" min="0" oninput="calcDealTotal()" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono text-right">
+            </div>
+            <div class="col-span-3">
+              <label class="block text-[11px] text-slate-500 mb-0.5">單價 (NT$)</label>
+              <input type="number" id="deal_price_1" name="price_1" value="0" min="0" oninput="calcDealTotal()" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono text-right">
+            </div>
           </div>
         </div>
+
+        <!-- Optional Item 2 -->
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+          <div class="text-xs font-bold text-slate-700">商機預估物料明細 2 (選填)</div>
+          <div class="grid grid-cols-12 gap-2">
+            <div class="col-span-6">
+              <label class="block text-[11px] text-slate-500 mb-0.5">選擇品號 / 規格</label>
+              <select name="sku_2" onchange="updateDealItemPrice(this, 'deal_price_2')" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
+                <option value="">-- 無其他品項 --</option>
+                {% for p in products %}
+                  <option value="{{ p.sku }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.sku }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-span-3">
+              <label class="block text-[11px] text-slate-500 mb-0.5">數量</label>
+              <input type="number" id="deal_qty_2" name="qty_2" value="0" min="0" oninput="calcDealTotal()" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono text-right">
+            </div>
+            <div class="col-span-3">
+              <label class="block text-[11px] text-slate-500 mb-0.5">單價 (NT$)</label>
+              <input type="number" id="deal_price_2" name="price_2" value="0" min="0" oninput="calcDealTotal()" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono text-right">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">自訂預估總金額 (NT$) <span class="text-[11px] text-slate-400 font-normal">（若未選填物料，可直接在此輸入預算）</span></label>
+          <input type="number" id="deal-manual-expected-amount" name="expected_amount" value="" min="0" placeholder="例如：50000" oninput="calcDealTotal()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+        </div>
+
+        <!-- Calculated Expected Total -->
+        <div class="flex items-center justify-between p-3 bg-indigo-50/70 rounded-lg border border-indigo-100">
+          <span class="text-xs font-medium text-indigo-900">預估商機總金額：</span>
+          <span class="text-sm font-bold font-mono text-indigo-700">NT$ <span id="deal-total-display">0</span></span>
+        </div>
+
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" onclick="document.getElementById('modal-new-deal').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">取消</button>
           <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm">建立商機</button>
@@ -363,52 +437,19 @@
         </div>
         <button type="button" onclick="document.getElementById('modal-new-quote').classList.add('hidden')" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
       </div>
-      <form id="quote-form" action="" method="POST" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML" hx-on::after-request="if(event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { document.getElementById('modal-new-quote').classList.add('hidden'); }" autocomplete="off" class="p-5 space-y-4">
+      <form id="quote-form" action="" method="POST" hx-target="#crm-container" hx-select="#crm-container" hx-swap="outerHTML show:none" hx-on::after-request="if(event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { document.getElementById('modal-new-quote').classList.add('hidden'); }" autocomplete="off" class="p-5 space-y-4">
         
-        <!-- Item 1 -->
-        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-          <div class="text-xs font-bold text-slate-700">報價明細項次 1 <span class="text-rose-500">*</span></div>
-          <div class="grid grid-cols-12 gap-2">
-            <div class="col-span-6">
-              <label class="block text-[11px] text-slate-500 mb-0.5">選擇品號 / 規格</label>
-              <select name="sku_1" required onchange="updateItemPrice(this, 'price_1')" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
-                {% for p in products %}
-                  <option value="{{ p.sku }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.sku }})</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-span-3">
-              <label class="block text-[11px] text-slate-500 mb-0.5">數量</label>
-              <input type="number" name="qty_1" value="5" min="1" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
-            </div>
-            <div class="col-span-3">
-              <label class="block text-[11px] text-slate-500 mb-0.5">單價 (NT$)</label>
-              <input type="number" id="price_1" name="price_1" value="{% if products %}{{ products[0].price }}{% else %}1000{% endif %}" min="0" required class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
-            </div>
+        <!-- Dynamic Items Container -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">報價明細物料清冊 <span class="text-rose-500">*</span></span>
+            <button type="button" onclick="addQuoteItemRow()" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold rounded-md border border-slate-300 transition flex items-center gap-1 cursor-pointer">
+              <span>＋ 新增報價項目</span>
+            </button>
           </div>
-        </div>
 
-        <!-- Item 2 (Optional) -->
-        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-          <div class="text-xs font-bold text-slate-700">報價明細項次 2 (選填)</div>
-          <div class="grid grid-cols-12 gap-2">
-            <div class="col-span-6">
-              <label class="block text-[11px] text-slate-500 mb-0.5">選擇品號 / 規格</label>
-              <select name="sku_2" onchange="updateItemPrice(this, 'price_2')" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
-                <option value="">-- 不加購項次 2 --</option>
-                {% for p in products %}
-                  <option value="{{ p.sku }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.sku }})</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-span-3">
-              <label class="block text-[11px] text-slate-500 mb-0.5">數量</label>
-              <input type="number" name="qty_2" value="2" min="0" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
-            </div>
-            <div class="col-span-3">
-              <label class="block text-[11px] text-slate-500 mb-0.5">單價 (NT$)</label>
-              <input type="number" id="price_2" name="price_2" value="0" min="0" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono">
-            </div>
+          <div id="quote-items-container" class="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+            <!-- Dynamic rows will be inserted here -->
           </div>
         </div>
 
@@ -418,13 +459,46 @@
           <span class="text-xs text-slate-400 ml-1">天（系統自動試算有效截止日）</span>
         </div>
 
-        <div class="pt-2 flex justify-end gap-2 border-t border-slate-200">
-          <button type="button" onclick="document.getElementById('modal-new-quote').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">取消</button>
-          <button type="submit" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm">產出報價單並進展至 PROPOSAL</button>
+        <div class="pt-2 flex items-center justify-between border-t border-slate-200">
+          <div class="text-xs text-slate-500">
+            預計總額：<span id="quote-total-display" class="font-bold font-mono text-amber-700 text-sm">NT$ 0</span>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" onclick="document.getElementById('modal-new-quote').classList.add('hidden')" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">取消</button>
+            <button type="submit" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm cursor-pointer">產出報價單並進展至 PROPOSAL</button>
+          </div>
         </div>
       </form>
     </div>
   </div>
+
+  <!-- Template: 報價項目列 (Quote Item Template) -->
+  <template id="quote-item-template">
+    <div class="quote-item-row p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2 relative">
+      <div class="flex items-center justify-between">
+        <span class="quote-item-label text-xs font-bold text-slate-700">報價明細項次</span>
+        <button type="button" onclick="removeQuoteItemRow(this)" class="quote-remove-btn text-slate-400 hover:text-rose-600 font-bold text-base leading-none cursor-pointer px-1" title="刪除此項">&times;</button>
+      </div>
+      <div class="grid grid-cols-12 gap-2">
+        <div class="col-span-6">
+          <label class="block text-[11px] text-slate-500 mb-0.5">選擇品號 / 規格</label>
+          <select name="sku" required onchange="handleQuoteSkuChange(this)" class="quote-sku-select w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
+            {% for p in products %}
+              <option value="{{ p.sku }}" data-price="{{ p.price }}">{{ p.name }} ({{ p.sku }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-span-3">
+          <label class="block text-[11px] text-slate-500 mb-0.5">數量</label>
+          <input type="number" name="qty" value="1" min="1" required oninput="calcQuoteTotal()" class="quote-qty-input w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono text-right">
+        </div>
+        <div class="col-span-3">
+          <label class="block text-[11px] text-slate-500 mb-0.5">單價 (NT$)</label>
+          <input type="number" name="price" value="{% if products %}{{ products[0].price }}{% else %}1000{% endif %}" min="0" required oninput="calcQuoteTotal()" class="quote-price-input w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg font-mono text-right">
+        </div>
+      </div>
+    </div>
+  </template>
 
 </div>
 
@@ -435,13 +509,114 @@
     document.getElementById('modal-new-deal').classList.remove('hidden');
   }
 
-  function openQuoteModal(dealId, dealTitle) {
+  function handleQuoteSkuChange(selectEl) {
+    const opt = selectEl.options[selectEl.selectedIndex];
+    if (opt && opt.dataset.price) {
+      const row = selectEl.closest('.quote-item-row');
+      const priceInput = row.querySelector('.quote-price-input');
+      if (priceInput) {
+        priceInput.value = opt.dataset.price;
+      }
+    }
+    calcQuoteTotal();
+  }
+
+  function addQuoteItemRow(skuVal, qtyVal, priceVal) {
+    const container = document.getElementById('quote-items-container');
+    const template = document.getElementById('quote-item-template');
+    if (!container || !template) return;
+    const clone = template.content.cloneNode(true);
+    const row = clone.querySelector('.quote-item-row');
+    const skuSel = row.querySelector('.quote-sku-select');
+    const qtyIn = row.querySelector('.quote-qty-input');
+    const priceIn = row.querySelector('.quote-price-input');
+
+    if (skuVal && skuSel) {
+      skuSel.value = skuVal;
+    }
+    if (qtyVal !== undefined && qtyIn) {
+      qtyIn.value = qtyVal;
+    }
+    if (priceVal !== undefined && priceIn) {
+      priceIn.value = priceVal;
+    } else if (skuSel && skuSel.options[skuSel.selectedIndex]) {
+      priceIn.value = skuSel.options[skuSel.selectedIndex].dataset.price || '0';
+    }
+
+    container.appendChild(clone);
+    updateQuoteItemLabels();
+    calcQuoteTotal();
+  }
+
+  function removeQuoteItemRow(btn) {
+    const container = document.getElementById('quote-items-container');
+    const rows = container.querySelectorAll('.quote-item-row');
+    if (rows.length > 1) {
+      btn.closest('.quote-item-row').remove();
+      updateQuoteItemLabels();
+      calcQuoteTotal();
+    } else {
+      alert('報價單必須保留至少一項物料');
+    }
+  }
+
+  function updateQuoteItemLabels() {
+    const container = document.getElementById('quote-items-container');
+    const rows = container.querySelectorAll('.quote-item-row');
+    rows.forEach((row, idx) => {
+      const lbl = row.querySelector('.quote-item-label');
+      if (lbl) {
+        lbl.innerHTML = `報價明細項次 ${idx + 1} ${idx === 0 ? '<span class="text-rose-500">*</span>' : ''}`;
+      }
+      const rmBtn = row.querySelector('.quote-remove-btn');
+      if (rmBtn) {
+        rmBtn.style.display = rows.length > 1 ? 'inline-block' : 'none';
+      }
+    });
+  }
+
+  function calcQuoteTotal() {
+    const container = document.getElementById('quote-items-container');
+    if (!container) return;
+    const rows = container.querySelectorAll('.quote-item-row');
+    let total = 0;
+    rows.forEach(r => {
+      const q = parseFloat(r.querySelector('.quote-qty-input')?.value || 0);
+      const p = parseFloat(r.querySelector('.quote-price-input')?.value || 0);
+      if (!isNaN(q) && !isNaN(p)) {
+        total += (q * p);
+      }
+    });
+    const disp = document.getElementById('quote-total-display');
+    if (disp) {
+      disp.innerText = `NT$ ${Math.round(total).toLocaleString()}`;
+    }
+  }
+
+  function openQuoteModal(dealId, dealTitle, items) {
     const form = document.getElementById('quote-form');
     const url = `/crm/deals/${dealId}/quotes`;
     form.action = url;
     form.setAttribute('hx-post', url);
     if (window.htmx) htmx.process(form);
     document.getElementById('quote-modal-deal-title').innerText = `商機：${dealTitle} (${dealId})`;
+
+    // Reset form state to prevent leakage from previous quote modals
+    form.reset();
+
+    // Populate dynamic items container
+    const container = document.getElementById('quote-items-container');
+    if (container) {
+      container.innerHTML = '';
+      if (items && Array.isArray(items) && items.length > 0) {
+        items.forEach(it => {
+          addQuoteItemRow(it.sku, it.qty || 1, it.price !== undefined ? it.price : undefined);
+        });
+      } else {
+        addQuoteItemRow();
+      }
+    }
+
     document.getElementById('modal-new-quote').classList.remove('hidden');
   }
 
@@ -476,6 +651,36 @@
     const input = document.getElementById(priceInputId);
     if (input && price) {
       input.value = price;
+    }
+  }
+
+  function updateDealItemPrice(selectElem, priceInputId) {
+    const opt = selectElem.options[selectElem.selectedIndex];
+    const price = opt.getAttribute('data-price');
+    const input = document.getElementById(priceInputId);
+    if (input && price) {
+      input.value = price;
+    } else if (input && !opt.value) {
+      input.value = '0';
+    }
+    calcDealTotal();
+  }
+
+  function calcDealTotal() {
+    const sel1 = document.querySelector('select[name="sku_1"]');
+    const sel2 = document.querySelector('select[name="sku_2"]');
+    const q1 = (sel1 && sel1.value) ? parseFloat(document.getElementById('deal_qty_1')?.value || 0) : 0;
+    const p1 = (sel1 && sel1.value) ? parseFloat(document.getElementById('deal_price_1')?.value || 0) : 0;
+    const q2 = (sel2 && sel2.value) ? parseFloat(document.getElementById('deal_qty_2')?.value || 0) : 0;
+    const p2 = (sel2 && sel2.value) ? parseFloat(document.getElementById('deal_price_2')?.value || 0) : 0;
+    let total = (q1 * p1) + (q2 * p2);
+    if (total === 0) {
+      const manual = parseFloat(document.getElementById('deal-manual-expected-amount')?.value || 0);
+      if (!isNaN(manual) && manual > 0) total = manual;
+    }
+    const disp = document.getElementById('deal-total-display');
+    if (disp) {
+      disp.innerText = total.toLocaleString();
     }
   }
 </script>

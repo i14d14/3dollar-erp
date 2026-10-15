@@ -11,6 +11,7 @@ from docx.shared import Inches, Pt, RGBColor
 import fitz  # PyMuPDF
 
 from src.extended_core.crm.models import Contact, Deal, Quote
+from src.shared.text_utils import to_half_width
 
 
 class QuoteDocumentEngine:
@@ -58,19 +59,19 @@ class QuoteDocumentEngine:
         meta_table.style = "Table Grid"
 
         left_data = [
-            f"客戶名稱：{contact.company_name}",
-            f"統一編號：{contact.tax_id or '未提供'}",
-            f"聯絡人員：{contact.contact_name}",
-            f"聯絡電話：{contact.phone or '未提供'}",
-            f"電子郵件：{contact.email or '未提供'}",
+            f"客戶名稱: {contact.company_name}",
+            f"統一編號: {contact.tax_id or '未提供'}",
+            f"聯絡人員: {contact.contact_name}",
+            f"聯絡電話: {contact.phone or '未提供'}",
+            f"電子郵件: {contact.email or '未提供'}",
         ]
         valid_date_str = quote.valid_until.strftime("%Y-%m-%d") if isinstance(quote.valid_until, (datetime.date, datetime.datetime)) else str(quote.valid_until)
         right_data = [
-            f"報價單號：{quote.quote_number}",
-            f"商機案名：{deal.title}",
-            f"報價日期：{datetime.date.today().strftime('%Y-%m-%d')}",
-            f"有效期限：{valid_date_str}",
-            f"單據狀態：{quote.status.value}",
+            f"報價單號: {quote.quote_number}",
+            f"商機案名: {deal.title}",
+            f"報價日期: {datetime.date.today().strftime('%Y-%m-%d')}",
+            f"有效期限: {valid_date_str}",
+            f"單據狀態: {quote.status.value}",
         ]
 
         for i in range(5):
@@ -94,13 +95,13 @@ class QuoteDocumentEngine:
         doc.add_paragraph().paragraph_format.space_after = Pt(8)
 
         # Line Items Table
-        headers = ["項次", "品號", "商品名稱", "數量", "單價 (NT$)", "小計 (NT$)"]
+        headers = ["項次", "商品名稱", "規格料號 (SKU)", "數量", "單價 (NT$)", "小計 (NT$)"]
         item_table = doc.add_table(rows=1 + len(items_detail), cols=6)
         item_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         item_table.autofit = False
         item_table.style = "Table Grid"
 
-        col_widths = [Inches(0.6), Inches(1.3), Inches(2.2), Inches(0.7), Inches(1.0), Inches(1.0)]
+        col_widths = [Inches(0.6), Inches(2.2), Inches(1.3), Inches(0.7), Inches(1.0), Inches(1.0)]
 
         # Header formatting
         for col_idx, text in enumerate(headers):
@@ -126,8 +127,8 @@ class QuoteDocumentEngine:
 
             row_data = [
                 str(row_idx),
-                sku,
                 name,
+                sku,
                 f"{qty:,.0f}" if qty % 1 == 0 else f"{qty:,.2f}",
                 f"{price:,.2f}",
                 f"{subtotal:,.2f}",
@@ -152,15 +153,15 @@ class QuoteDocumentEngine:
         p_sum = doc.add_paragraph()
         p_sum.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         p_sum.paragraph_format.space_after = Pt(2)
-        r1 = p_sum.add_run(f"未稅合計 (Subtotal)： NT$ {total_net:,.2f}\n")
+        r1 = p_sum.add_run(f"未稅合計 (Subtotal): NT$ {total_net:,.2f}\n")
         r1.font.name = "微軟正黑體"
         r1.font.size = Pt(10)
 
-        r2 = p_sum.add_run(f"營業稅額 (VAT 5%)： NT$ {tax:,.2f}\n")
+        r2 = p_sum.add_run(f"營業稅額 (VAT 5%): NT$ {tax:,.2f}\n")
         r2.font.name = "微軟正黑體"
         r2.font.size = Pt(10)
 
-        r3 = p_sum.add_run(f"含稅總計 (Grand Total)： NT$ {grand_total:,.2f}")
+        r3 = p_sum.add_run(f"含稅總計 (Grand Total): NT$ {grand_total:,.2f}")
         r3.font.name = "微軟正黑體"
         r3.font.size = Pt(12)
         r3.font.bold = True
@@ -171,12 +172,12 @@ class QuoteDocumentEngine:
         # Terms and Signatures
         terms_p = doc.add_paragraph()
         terms_p.paragraph_format.space_after = Pt(4)
-        r_terms_t = terms_p.add_run("商業約定條款：\n")
+        r_terms_t = terms_p.add_run("商業約定條款:\n")
         r_terms_t.font.bold = True
         r_terms_t.font.size = Pt(9.5)
         terms_text = (
             "1. 報價單有效期間內確認訂購，享有上述報價優惠；逾期請洽業務人員重新評估。\n"
-            "2. 付款方式：交貨驗收後 30 天內電匯結清款項。\n"
+            "2. 付款方式: 交貨驗收後 30 天內電匯結清款項。\n"
             "3. 本報價單經客戶簽名或蓋章回傳後即生效力，視為正式合約附隨採購意向書。"
         )
         r_terms_c = terms_p.add_run(terms_text)
@@ -190,18 +191,18 @@ class QuoteDocumentEngine:
         sig_table.cell(1, 0).width = Inches(3.3)
         sig_table.cell(1, 1).width = Inches(3.3)
 
-        s1 = sig_table.cell(0, 0).paragraphs[0].add_run("報價單位（賣方蓋章）：\n三圓科技股份有限公司")
+        s1 = sig_table.cell(0, 0).paragraphs[0].add_run("報價單位 (賣方蓋章):\n三圓科技股份有限公司")
         s1.font.name = "微軟正黑體"
         s1.font.size = Pt(9.5)
         s1.font.bold = True
 
-        s2 = sig_table.cell(0, 1).paragraphs[0].add_run(f"確認客戶（買方簽署）：\n{contact.company_name}")
+        s2 = sig_table.cell(0, 1).paragraphs[0].add_run(f"確認客戶 (買方簽署):\n{contact.company_name}")
         s2.font.name = "微軟正黑體"
         s2.font.size = Pt(9.5)
         s2.font.bold = True
 
-        sig_table.cell(1, 0).paragraphs[0].add_run("經辦簽章：__________________\n日期：____ 年 ____ 月 ____ 日").font.size = Pt(9)
-        sig_table.cell(1, 1).paragraphs[0].add_run("主管覆核：__________________\n日期：____ 年 ____ 月 ____ 日").font.size = Pt(9)
+        sig_table.cell(1, 0).paragraphs[0].add_run("經辦簽章: __________________\n日期: ____ 年 ____ 月 ____ 日").font.size = Pt(9)
+        sig_table.cell(1, 1).paragraphs[0].add_run("主管覆核: __________________\n日期: ____ 年 ____ 月 ____ 日").font.size = Pt(9)
 
         stream = io.BytesIO()
         doc.save(stream)
@@ -220,34 +221,47 @@ class QuoteDocumentEngine:
         page = doc.new_page(width=595.3, height=841.9)
         margin = 40.0
         width = 595.3
+
+        def put_text(point: fitz.Point, text: str, **kwargs):
+            page.insert_text(point, to_half_width(text), **kwargs)
         
         # Outer Border Box
         page.draw_rect(fitz.Rect(margin, margin, width - margin, 800), color=(0.8, 0.8, 0.8), width=0.8)
 
         # Header Title Bar
         page.draw_rect(fitz.Rect(margin, margin, width - margin, 95), fill=(0.12, 0.16, 0.23), stroke_opacity=0)
-        page.insert_text(fitz.Point(margin + 20, margin + 25), "3Dollar ERP  •  哩來 (LiLai) CRM", fontsize=11, fontname="china-t", color=(0.7, 0.75, 0.85))
-        page.insert_text(fitz.Point(margin + 20, margin + 45), "商業報價單 / COMMERCIAL QUOTATION", fontsize=15, fontname="china-t", color=(1.0, 1.0, 1.0))
+        put_text(fitz.Point(margin + 20, margin + 25), "3Dollar ERP  •  哩來 (LiLai) CRM", fontsize=11, fontname="china-t", color=(0.7, 0.75, 0.85))
+        put_text(fitz.Point(margin + 20, margin + 45), "商業報價單 / COMMERCIAL QUOTATION", fontsize=15, fontname="china-t", color=(1.0, 1.0, 1.0))
 
         # Metadata Section
         y_meta = 120
         # Left side: Customer
-        page.insert_text(fitz.Point(margin + 15, y_meta), "【買方 / 客戶資料】", fontsize=10, fontname="china-t", color=(0.2, 0.2, 0.3))
-        page.insert_text(fitz.Point(margin + 15, y_meta + 18), f"客戶名稱: {contact.company_name}", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(margin + 15, y_meta + 34), f"統一編號: {contact.tax_id or '未提供'}", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(margin + 15, y_meta + 50), f"聯絡人員: {contact.contact_name}", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(margin + 15, y_meta + 66), f"聯絡電話: {contact.phone or '未提供'}", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(margin + 15, y_meta + 82), f"電子信箱: {contact.email or '未提供'}", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(margin + 15, y_meta), "【買方 / 客戶資料】", fontsize=10, fontname="china-t", color=(0.2, 0.2, 0.3))
+        put_text(fitz.Point(margin + 15, y_meta + 18), "客戶名稱: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(margin + 60, y_meta + 18), contact.company_name, fontsize=9, fontname="china-t")
+        put_text(fitz.Point(margin + 15, y_meta + 34), "統一編號: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(margin + 60, y_meta + 34), contact.tax_id or "未提供", fontsize=9, fontname="helv" if contact.tax_id else "china-t")
+        put_text(fitz.Point(margin + 15, y_meta + 50), "聯絡人員: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(margin + 60, y_meta + 50), contact.contact_name, fontsize=9, fontname="china-t")
+        put_text(fitz.Point(margin + 15, y_meta + 66), "聯絡電話: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(margin + 60, y_meta + 66), contact.phone or "未提供", fontsize=9, fontname="helv" if contact.phone else "china-t")
+        put_text(fitz.Point(margin + 15, y_meta + 82), "電子信箱: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(margin + 60, y_meta + 82), contact.email or "未提供", fontsize=9, fontname="helv" if contact.email else "china-t")
 
         # Right side: Quote & Deal
         x_right = width / 2 + 10
         valid_date_str = quote.valid_until.strftime("%Y-%m-%d") if isinstance(quote.valid_until, (datetime.date, datetime.datetime)) else str(quote.valid_until)
-        page.insert_text(fitz.Point(x_right, y_meta), "【單據 / 商機資訊】", fontsize=10, fontname="china-t", color=(0.2, 0.2, 0.3))
-        page.insert_text(fitz.Point(x_right, y_meta + 18), f"報價單號: {quote.quote_number}", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(x_right, y_meta + 34), f"商機案名: {deal.title}", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(x_right, y_meta + 50), f"報價日期: {datetime.date.today().strftime('%Y-%m-%d')}", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(x_right, y_meta + 66), f"有效期限: {valid_date_str}", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(x_right, y_meta + 82), f"單據狀態: {quote.status.value}", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(x_right, y_meta), "【單據 / 商機資訊】", fontsize=10, fontname="china-t", color=(0.2, 0.2, 0.3))
+        put_text(fitz.Point(x_right, y_meta + 18), "報價單號: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(x_right + 50, y_meta + 18), quote.quote_number, fontsize=9, fontname="helv")
+        put_text(fitz.Point(x_right, y_meta + 34), "商機案名: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(x_right + 50, y_meta + 34), deal.title, fontsize=9, fontname="china-t")
+        put_text(fitz.Point(x_right, y_meta + 50), "報價日期: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(x_right + 50, y_meta + 50), datetime.date.today().strftime('%Y-%m-%d'), fontsize=9, fontname="helv")
+        put_text(fitz.Point(x_right, y_meta + 66), "有效期限: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(x_right + 50, y_meta + 66), valid_date_str, fontsize=9, fontname="helv")
+        put_text(fitz.Point(x_right, y_meta + 82), "單據狀態: ", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(x_right + 50, y_meta + 82), quote.status.value, fontsize=9, fontname="helv")
 
         # Separator Line
         y_table_top = y_meta + 102
@@ -256,12 +270,12 @@ class QuoteDocumentEngine:
         # Table Header
         y_header = y_table_top + 16
         page.draw_rect(fitz.Rect(margin + 10, y_table_top + 4, width - margin - 10, y_table_top + 24), fill=(0.95, 0.96, 0.98), stroke_opacity=0)
-        page.insert_text(fitz.Point(margin + 15, y_header), "#", fontsize=9, fontname="helv", color=(0.3, 0.3, 0.4))
-        page.insert_text(fitz.Point(margin + 45, y_header), "品號 (SKU)", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
-        page.insert_text(fitz.Point(margin + 155, y_header), "品名與規格", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
-        page.insert_text(fitz.Point(width - margin - 190, y_header), "數量", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
-        page.insert_text(fitz.Point(width - margin - 125, y_header), "單價 (NT$)", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
-        page.insert_text(fitz.Point(width - margin - 65, y_header), "小計 (NT$)", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
+        put_text(fitz.Point(margin + 15, y_header), "#", fontsize=9, fontname="helv", color=(0.3, 0.3, 0.4))
+        put_text(fitz.Point(margin + 45, y_header), "商品名稱", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
+        put_text(fitz.Point(margin + 175, y_header), "規格料號 (SKU)", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
+        put_text(fitz.Point(width - margin - 190, y_header), "數量", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
+        put_text(fitz.Point(width - margin - 125, y_header), "單價 (NT$)", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
+        put_text(fitz.Point(width - margin - 65, y_header), "小計 (NT$)", fontsize=9, fontname="china-t", color=(0.3, 0.3, 0.4))
 
         # Items Rows
         curr_y = y_header + 20
@@ -274,13 +288,13 @@ class QuoteDocumentEngine:
             subtotal = Decimal(str(it.get("subtotal", qty * price)))
             total_net += subtotal
 
-            page.insert_text(fitz.Point(margin + 15, curr_y), str(idx), fontsize=8.5, fontname="helv")
-            page.insert_text(fitz.Point(margin + 45, curr_y), sku, fontsize=8.5, fontname="helv")
-            name_display = name[:16] + "..." if len(name) > 18 else name
-            page.insert_text(fitz.Point(margin + 155, curr_y), name_display, fontsize=8.5, fontname="china-t")
-            page.insert_text(fitz.Point(width - margin - 190, curr_y), f"{qty:,.0f}" if qty % 1 == 0 else f"{qty:,.2f}", fontsize=8.5, fontname="helv")
-            page.insert_text(fitz.Point(width - margin - 125, curr_y), f"{price:,.2f}", fontsize=8.5, fontname="helv")
-            page.insert_text(fitz.Point(width - margin - 65, curr_y), f"{subtotal:,.2f}", fontsize=8.5, fontname="helv")
+            put_text(fitz.Point(margin + 15, curr_y), str(idx), fontsize=8.5, fontname="helv")
+            name_display = name[:18] + "..." if len(name) > 20 else name
+            put_text(fitz.Point(margin + 45, curr_y), name_display, fontsize=8.5, fontname="china-t")
+            put_text(fitz.Point(margin + 175, curr_y), sku, fontsize=8.5, fontname="helv")
+            put_text(fitz.Point(width - margin - 190, curr_y), f"{qty:,.0f}" if qty % 1 == 0 else f"{qty:,.2f}", fontsize=8.5, fontname="helv")
+            put_text(fitz.Point(width - margin - 125, curr_y), f"{price:,.2f}", fontsize=8.5, fontname="helv")
+            put_text(fitz.Point(width - margin - 65, curr_y), f"{subtotal:,.2f}", fontsize=8.5, fontname="helv")
 
             page.draw_line(fitz.Point(margin + 10, curr_y + 6), fitz.Point(width - margin - 10, curr_y + 6), color=(0.92, 0.92, 0.92), width=0.5)
             curr_y += 20
@@ -290,33 +304,33 @@ class QuoteDocumentEngine:
         grand_total = total_net + tax
 
         curr_y += 10
-        page.insert_text(fitz.Point(width - margin - 220, curr_y), f"未稅小計 (Subtotal):", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(width - margin - 75, curr_y), f"NT$ {total_net:,.2f}", fontsize=9, fontname="helv")
+        put_text(fitz.Point(width - margin - 220, curr_y), "未稅小計 (Subtotal):", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(width - margin - 95, curr_y), f"NT$ {total_net:,.2f}", fontsize=9, fontname="helv")
 
         curr_y += 16
-        page.insert_text(fitz.Point(width - margin - 220, curr_y), f"營業稅 (VAT 5%):", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(width - margin - 75, curr_y), f"NT$ {tax:,.2f}", fontsize=9, fontname="helv")
+        put_text(fitz.Point(width - margin - 220, curr_y), "營業稅 (VAT 5%):", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(width - margin - 95, curr_y), f"NT$ {tax:,.2f}", fontsize=9, fontname="helv")
 
         curr_y += 18
         page.draw_rect(fitz.Rect(width - margin - 230, curr_y - 12, width - margin - 10, curr_y + 8), fill=(0.93, 0.94, 0.99), stroke_opacity=0)
-        page.insert_text(fitz.Point(width - margin - 220, curr_y), f"含稅總計 (Grand Total):", fontsize=10, fontname="china-t", color=(0.2, 0.2, 0.8))
-        page.insert_text(fitz.Point(width - margin - 85, curr_y), f"NT$ {grand_total:,.2f}", fontsize=11, fontname="helv", color=(0.2, 0.2, 0.8))
+        put_text(fitz.Point(width - margin - 220, curr_y), "含稅總計 (Grand Total):", fontsize=10, fontname="china-t", color=(0.2, 0.2, 0.8))
+        put_text(fitz.Point(width - margin - 105, curr_y), f"NT$ {grand_total:,.2f}", fontsize=11, fontname="helv", color=(0.2, 0.2, 0.8))
 
         # Terms & Conditions
         y_terms = 650
         page.draw_line(fitz.Point(margin + 10, y_terms), fitz.Point(width - margin - 10, y_terms), color=(0.8, 0.8, 0.8), width=0.8)
-        page.insert_text(fitz.Point(margin + 15, y_terms + 18), "商業約定條款：", fontsize=9, fontname="china-t", color=(0.2, 0.2, 0.3))
-        page.insert_text(fitz.Point(margin + 15, y_terms + 34), "1. 報價單有效期間內確認訂購，享有上述報價優惠；逾期請洽業務人員重新評估。", fontsize=8, fontname="china-t", color=(0.4, 0.4, 0.4))
-        page.insert_text(fitz.Point(margin + 15, y_terms + 48), "2. 付款方式：雙方確認訂單出貨後 30 天內電匯結清款項。", fontsize=8, fontname="china-t", color=(0.4, 0.4, 0.4))
-        page.insert_text(fitz.Point(margin + 15, y_terms + 62), "3. 本報價單經客戶簽名回傳後即生效力，視為正式合約附隨採購意向書。", fontsize=8, fontname="china-t", color=(0.4, 0.4, 0.4))
+        put_text(fitz.Point(margin + 15, y_terms + 18), "商業約定條款:", fontsize=9, fontname="china-t", color=(0.2, 0.2, 0.3))
+        put_text(fitz.Point(margin + 15, y_terms + 34), "1. 報價單有效期間內確認訂購，享有上述報價優惠；逾期請洽業務人員重新評估。", fontsize=8, fontname="china-t", color=(0.4, 0.4, 0.4))
+        put_text(fitz.Point(margin + 15, y_terms + 48), "2. 付款方式: 雙方確認訂單出貨後 30 天內電匯結清款項。", fontsize=8, fontname="china-t", color=(0.4, 0.4, 0.4))
+        put_text(fitz.Point(margin + 15, y_terms + 62), "3. 本報價單經客戶簽名回傳後即生效力，視為正式合約附隨採購意向書。", fontsize=8, fontname="china-t", color=(0.4, 0.4, 0.4))
 
         # Signatures
         y_sig = 740
         page.draw_line(fitz.Point(margin + 10, y_sig), fitz.Point(width - margin - 10, y_sig), color=(0.8, 0.8, 0.8), width=0.8)
-        page.insert_text(fitz.Point(margin + 15, y_sig + 18), "賣方簽章：三圓科技股份有限公司", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(margin + 15, y_sig + 36), "經辦簽核：____________________   日期：____/____/____", fontsize=8, fontname="china-t")
+        put_text(fitz.Point(margin + 15, y_sig + 18), "賣方簽章: 三圓科技股份有限公司", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(margin + 15, y_sig + 36), "經辦簽核: ____________________   日期: ____/____/____", fontsize=8, fontname="china-t")
 
-        page.insert_text(fitz.Point(x_right, y_sig + 18), f"買方簽署：{contact.company_name}", fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(x_right, y_sig + 36), "客戶簽認：____________________   日期：____/____/____", fontsize=8, fontname="china-t")
+        put_text(fitz.Point(x_right, y_sig + 18), f"買方簽署: {contact.company_name}", fontsize=9, fontname="china-t")
+        put_text(fitz.Point(x_right, y_sig + 36), "客戶簽認: ____________________   日期: ____/____/____", fontsize=8, fontname="china-t")
 
         return doc.tobytes()

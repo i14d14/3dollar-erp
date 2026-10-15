@@ -10,6 +10,7 @@ from src.core.ports.event_bus_port import EventBusPort
 from src.core.services.inventory_service import InventoryService
 from src.core.services.invoice_service import InvoiceService
 from src.core.services.order_service import OrderService
+from src.core.services.procurement_service import ProcurementService
 from src.extended_core.accounting.services.accounting_service import AccountingService
 from src.extended_core.crm.services.crm_service import CrmService
 from src.shared.database import Database
@@ -50,6 +51,14 @@ def get_invoice_service(
 ) -> InvoiceService:
     """Dependency provider for InvoiceService wired to the active app db and event bus."""
     return InvoiceService(db=db, event_bus=event_bus)
+
+
+def get_procurement_service(
+    db: Database = Depends(get_db),
+    event_bus: EventBusPort = Depends(get_event_bus),
+) -> ProcurementService:
+    """Dependency provider for ProcurementService wired to the active app db and event bus."""
+    return ProcurementService(db=db, event_bus=event_bus)
 
 
 def get_inventory_service(

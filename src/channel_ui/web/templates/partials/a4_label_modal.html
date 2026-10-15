@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
       <div>
-        <h3 class="font-bold text-slate-800 text-base">A4 標籤紙起印設定 (2x2 多格貼紙)</h3>
+        <h3 class="font-bold text-slate-800 text-base">A4 出貨單起印設定 (2x2 多格出貨單)</h3>
         <p class="text-xs text-slate-500 font-mono mt-0.5">銷售訂單：{{ order.order_id }}</p>
       </div>
       <button type="button" onclick="document.getElementById('a4-label-modal').remove()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
@@ -39,10 +39,10 @@
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <label class="font-semibold text-slate-800">選擇起印格位 (Starting Slot)：</label>
-          <span class="text-[11px] text-slate-400">標準 A4 4格貼紙</span>
+          <span class="text-[11px] text-slate-400">標準 A4 4格出貨單</span>
         </div>
         <p class="text-[11px] text-slate-500 leading-relaxed">
-          若您的貼紙紙張上半部已撕取使用，請點選第一個可印之「空白格位」，系統將自動避開已使用區域並接續列印：
+          若您的出貨單紙張上半部已撕取/使用，請點選第一個可印之「空白格位」，系統將自動避開已使用區域並接續列印：
         </p>
 
         <!-- Visual A4 Sheet Container -->
@@ -97,7 +97,7 @@
           取消
         </button>
         <button type="submit" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
-          <span>📄 產生並開啟 A4 貼紙 PDF</span>
+          <span>📄 產生並開啟 A4 出貨單 PDF</span>
         </button>
       </div>
     </form>

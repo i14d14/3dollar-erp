@@ -90,8 +90,10 @@ Whenever reporting newly added features for manual verification or guiding the u
   - **Action (動作)**: Concrete operational step to perform (target page/tab, button clicked, form inputs, sample payload).
   - **Expected Outcome (預期)**: Concrete visual, data, or system reaction (UI badge update, toast/banner, PDF/Excel stream download, database reflection).
 * Strictly prohibit listing feature names or summaries without the explicit paired Action $\rightarrow$ Expected Outcome breakdown.
-* **On-Demand Autonomous Playwright Testing Policy**:
-  - Running end-to-end headless browser testing via Playwright is resource-intensive and incurs high overhead.
+* **On-Demand Autonomous Playwright Testing Policy & Mandatory Headed Execution**:
+  - Running end-to-end browser testing via Playwright is resource-intensive and incurs high overhead.
   - Agents MUST NOT automatically execute autonomous Playwright test suites (e.g., `test_playwright_*.py`) after every batch or routine task.
   - Standard fast unit tests, API integration tests, and architecture rule checks (`check_boundaries.py`) should be run autonomously as usual.
   - Autonomous Playwright browser E2E test suites must ONLY be executed when the user explicitly instructs to run them.
+  - **Mandatory Headed Mode Invariant**: Whenever Playwright browser UI tests are executed, they MUST ALWAYS run in headed mode (`headless=False` in code, or `--headed` via CLI) so that the user can visually observe real-time browser interactions, modal popups, and UI animations directly on the Windows desktop. Strictly prohibit executing browser UI tests in headless mode.
+  - **Fail-Fast Timeout Invariant (2-Second Upper Bound)**: Whenever authoring or executing Playwright browser tests, agents MUST enforce a strict 2000ms timeout (`page.set_default_timeout(2000)` and `set_default_navigation_timeout(5000)`, or via `tests/conftest.py`). Strictly prohibit relying on Playwright's default 30,000ms timeout to eliminate idle hang on missing elements or mismatched events.

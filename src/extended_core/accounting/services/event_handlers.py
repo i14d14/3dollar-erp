@@ -58,6 +58,31 @@ class AccountingEventHandler:
                 ],
             )
 
+    def handle_goods_receipt_reverted(self, event: DomainEvent) -> None:
+        """Handle ERP_GOODS_RECEIPT_REVERTED: reverse journal entry and ensure AP is cleaned."""
+        payload = event.payload
+        grn_id = payload.get("grn_id")
+        po_id = payload.get("po_id")
+
+        # 1. Reverse journal entry if present
+        with self.db.transaction() as conn:
+            je_row = conn.execute(
+                "SELECT entry_id FROM journal_entries WHERE source_event = 'ERP_GOODS_RECEIVED' AND reference_id = ?",
+                (grn_id,),
+            ).fetchone()
+        if je_row:
+            self.accounting_service.reverse_journal_entry(
+                entry_id=je_row["entry_id"],
+                reason=f"採購入庫撤回沖銷 (PO: {po_id}, GRN: {grn_id})",
+            )
+
+        # 2. Ensure AP record is deleted/cleaned
+        with self.db.transaction() as conn:
+            conn.execute(
+                "DELETE FROM accounts_payable WHERE grn_id = ? OR (po_id = ? AND paid_amount = 0)",
+                (grn_id, po_id),
+            )
+
     def handle_order_shipped(self, event: DomainEvent) -> None:
         """Handle ERP_ORDER_SHIPPED: recognize COGS (Dr 5111 銷貨成本, Cr 1201 存貨)."""
         payload = event.payload
@@ -151,6 +176,7 @@ def register_accounting_event_handlers(
     handler = AccountingEventHandler(accounting_service=acct_svc, db=db)
 
     event_bus.subscribe("ERP_GOODS_RECEIVED", handler.handle_goods_received)
+    event_bus.subscribe("ERP_GOODS_RECEIPT_REVERTED", handler.handle_goods_receipt_reverted)
     event_bus.subscribe("ERP_ORDER_SHIPPED", handler.handle_order_shipped)
     event_bus.subscribe("ERP_INVOICE_ISSUED", handler.handle_invoice_issued)
 

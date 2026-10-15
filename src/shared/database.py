@@ -182,6 +182,27 @@ class Database:
                         conn.execute("ALTER TABLE sales_order_items ADD COLUMN shipped_quantity NUMERIC NOT NULL DEFAULT 0;")
                 except Exception:
                     pass
+                try:
+                    cols = [r["name"] for r in conn.execute("PRAGMA table_info(sales_orders)").fetchall()]
+                    if cols and "warehouse_id" not in cols:
+                        conn.execute("ALTER TABLE sales_orders ADD COLUMN warehouse_id TEXT NOT NULL DEFAULT 'WH-MAIN';")
+                except Exception:
+                    pass
+                try:
+                    cols = [r["name"] for r in conn.execute("PRAGMA table_info(purchase_orders)").fetchall()]
+                    if cols and "warehouse_id" not in cols:
+                        conn.execute("ALTER TABLE purchase_orders ADD COLUMN warehouse_id TEXT NOT NULL DEFAULT 'WH-MAIN';")
+                except Exception:
+                    pass
+                try:
+                    conn.execute("""
+                        INSERT OR IGNORE INTO warehouse_stock_levels (warehouse_id, sku, safety_stock)
+                        SELECT DISTINCT l.warehouse_id, l.sku, COALESCE(p.safety_stock, 10)
+                        FROM stock_ledger l
+                        JOIN products p ON p.sku = l.sku;
+                    """)
+                except Exception:
+                    pass
             else:
                 conn.executescript(schema_sql)
 

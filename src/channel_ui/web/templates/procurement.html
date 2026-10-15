@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}採購與進貨作業 - 3Dollar ERP{% endblock %}
+{% block header_title %}採購與進貨作業中心 (Procurement & Inbound Fulfillment){% endblock %}
+
+{% block content %}
+<div id="procurement-container" class="space-y-6">
+
+  <!-- Lifecycle & KPI Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+    <div class="flex items-center gap-2 flex-wrap text-xs">
+      <span class="font-semibold text-slate-700">採購單生命週期：</span>
+      <span class="px-2 py-1 rounded bg-slate-100 text-slate-700 font-mono">1. 草稿 (DRAFT)</span>
+      <span class="text-slate-400">&rarr;</span>
+      <span class="px-2 py-1 rounded bg-sky-100 text-sky-800 font-mono">2. 待到貨 (SUBMITTED)</span>
+      <span class="text-slate-400">&rarr;</span>
+      <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-800 font-mono">3. 驗收入庫 (RECEIVED • 自動立帳 AP & 重算成本)</span>
+    </div>
+    <div class="text-xs text-slate-500 font-medium">
+      採購單共計 <span class="font-bold font-mono text-slate-900">{{ pos|length }}</span> 筆
+    </div>
+  </div>
+
+  <!-- Sub-Tabs: 手動開單 vs BOM比價一鍵下單 -->
+  <div class="border-b border-slate-200">
+    <nav class="flex space-x-6">
+      <button type="button" onclick="switchProcurementTab('manual')" id="tab-btn-manual"
+              class="pb-3 text-sm font-semibold border-b-2 border-indigo-600 text-indigo-600 transition-colors">
+        📝 快速手動開單 (Manual PO)
+      </button>
+      <button type="button" onclick="switchProcurementTab('bom')" id="tab-btn-bom"
+              class="pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors">
+        📊 BOM 智慧解析比價與一鍵下單 (BOM Split PO)
+      </button>
+    </nav>
+  </div>
+
+  <!-- Tab 1: Create Purchase Order Form Card -->
+  <div id="section-manual-po" class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+    <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+      <div>
+        <h2 class="text-sm font-bold text-slate-900">快速建立採購單 (New Purchase Order)</h2>
+        <p class="text-xs text-slate-500 mt-0.5">
+          {% if prefill_sku %}
+          <span class="text-indigo-600 font-semibold">💡 系統已自動預填低庫存補貨資訊</span>（物料、缺額與供應商已帶入）
+          {% else %}
+          指定供應商與物料明細，送出後即刻生成 DRAFT 採購單
+          {% endif %}
+        </p>
+      </div>
+      <span class="text-xs px-2.5 py-1 rounded bg-indigo-50 text-indigo-700 font-mono border border-indigo-200">
+        Moving Average Cost Engine
+      </span>
+    </div>
+
+    <form action="/procurement/create"
+          method="POST"
+          hx-post="/procurement/create"
+          hx-target="#procurement-container"
+          hx-select="#procurement-container"
+          hx-swap="outerHTML"
+          data-testid="form-create-po"
+          class="space-y-4 text-xs">
+      
+      <!-- Supplier Name & Target Warehouse -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="sm:col-span-2">
+          <label class="block font-semibold text-slate-700 mb-1">供應商名稱 (Supplier Name) <span class="text-rose-500">*</span></label>
+          <input type="text"
+                 name="supplier_name"
+                 id="input-supplier-name"
+                 data-testid="input-supplier-name"
+                 required
+                 value="{{ prefill_supplier_name }}"
+                 placeholder="例如：台塑塑膠工業、宏碁零組件供應商"
+                 class="w-full rounded-md border-slate-300 shadow-2xs p-2 border focus:ring-indigo-500 focus:border-indigo-500 text-xs">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">預計進貨倉庫</label>
+          <select name="target_warehouse" id="select-target-warehouse" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border focus:ring-indigo-500 focus:border-indigo-500 text-xs bg-white">
+            {% for wh in warehouses %}
+            <option value="{{ wh.warehouse_id }}" {% if prefill_warehouse_id == wh.warehouse_id %}selected{% endif %}>{{ wh.name }} ({{ wh.warehouse_id }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Purchase Items Section -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="font-semibold text-slate-700">採購物料明細 (Purchase Items) <span class="text-rose-500">*</span></label>
+          <button type="button" onclick="addProcurementItemRow()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1">
+            <span>＋ 增列物料</span>
+          </button>
+        </div>
+
+        <div class="border border-slate-200 rounded-lg overflow-hidden">
+          <table class="w-full text-left border-collapse" id="po-items-table">
+            <thead>
+              <tr class="bg-slate-50 text-slate-600 text-[11px] font-semibold border-b border-slate-200">
+                <th class="px-3 py-2 w-5/12">採購物料 (品名 / SKU)</th>
+                <th class="px-3 py-2 w-3/12">採購數量</th>
+                <th class="px-3 py-2 w-3/12">預估進貨單價 (NT$)</th>
+                <th class="px-3 py-2 w-1/12 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="po-items-tbody" class="divide-y divide-slate-100">
+              <!-- Item Row 1 -->
+              <tr class="po-item-row">
+                <td class="px-3 py-2">
+                  <select name="sku" required onchange="handleSkuChange(this)" class="sku-select w-full rounded border-slate-300 shadow-2xs p-1.5 border text-xs bg-white focus:ring-indigo-500 focus:border-indigo-500 font-mono">
+                    <option value="">-- 請選擇物料 --</option>
+                    {% for p in products %}
+                    <option value="{{ p.sku }}" data-cost="{{ p.cost_price }}" {% if prefill_sku == p.sku %}selected{% endif %}>
+                      {{ p.name }} ({{ p.sku }}) - 目前成本: {{ p.cost_price_formatted }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td class="px-3 py-2">
+                  <input type="number" name="qty" required min="1" step="1" value="{{ prefill_qty }}" placeholder="數量" class="qty-input w-full rounded border-slate-300 shadow-2xs p-1.5 border text-xs font-mono focus:ring-indigo-500 focus:border-indigo-500 text-right">
+                </td>
+                <td class="px-3 py-2">
+                  <input type="number" name="unit_cost" required min="0" step="0.01" value="{{ prefill_unit_cost or '100.00' }}" placeholder="單價" class="cost-input w-full rounded border-slate-300 shadow-2xs p-1.5 border text-xs font-mono focus:ring-indigo-500 focus:border-indigo-500 text-right">
+                </td>
+                <td class="px-3 py-2 text-center">
+                  <button type="button" onclick="removeProcurementItemRow(this)" class="text-slate-400 hover:text-rose-600 font-bold text-sm leading-none" title="刪除此列">&times;</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button type="submit" data-testid="btn-create-po" class="px-5 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-sm transition flex items-center gap-1.5">
+          <span>建立採購單 (Draft)</span>
+          <span class="htmx-indicator animate-spin">⏳</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Tab 2: BOM Upload, Comparison & One-Click Split POs Section -->
+  <div id="section-bom-po" class="hidden bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+      <div>
+        <h3 class="text-sm font-bold text-slate-900">BOM 表上傳比價與一鍵依供應商分割建立採購單</h3>
+        <p class="text-xs text-slate-500 mt-0.5">系統解析 Excel (.xlsx) 物料需求清單，自動比對各廠商歷史報價，並可一鍵依供應商分拆建立多張 PO</p>
+      </div>
+      <a href="/procurement/bom/sample" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 shadow-2xs transition">
+        <span>📥 下載範本 BOM Excel</span>
+      </a>
+    </div>
+
+    <!-- Upload Form -->
+    <form action="/procurement/bom/compare"
+          method="POST"
+          enctype="multipart/form-data"
+          hx-post="/procurement/bom/compare"
+          hx-target="#procurement-bom-result-container"
+          hx-encoding="multipart/form-data"
+          class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
+      <div class="font-semibold text-slate-700">選擇欲比價之 BOM 表 Excel (.xlsx) 檔案：</div>
+      <div class="flex flex-col sm:flex-row items-center gap-3">
+        <input type="file"
+               name="file"
+               accept=".xlsx,.xlsm"
+               required
+               class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-300 rounded-lg cursor-pointer bg-white">
+        <button type="submit" class="shrink-0 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5">
+          <span>開始智慧比價</span>
+          <span class="htmx-indicator animate-spin">⏳</span>
+        </button>
+      </div>
+    </form>
+
+    <!-- BOM Results Container -->
+    <div id="procurement-bom-result-container"></div>
+  </div>
+
+  <!-- Purchase Orders Stream Table -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+      <div>
+        <h2 class="font-bold text-slate-900 text-sm">採購單流轉歷程 (Purchase Orders Ledger)</h2>
+        <p class="text-xs text-slate-500 mt-0.5">即時狀態追蹤、供應商交付管理與入庫閉環</p>
+      </div>
+      <span class="text-xs text-slate-500 font-mono">最新 50 筆單據</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table data-testid="table-procurement-orders" class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50 text-slate-600 text-xs font-semibold border-b border-slate-200 uppercase tracking-wider">
+            <th class="px-4 py-3">採購單號 / 建立時間</th>
+            <th class="px-4 py-3">供應商名稱</th>
+            <th class="px-4 py-3">物料明細摘要</th>
+            <th class="px-4 py-3">採購總額</th>
+            <th class="px-4 py-3">單據狀態</th>
+            <th class="px-4 py-3 text-right">作業執行</th>
+          </tr>
+        </thead>
+        <tbody id="po-tbody" data-testid="procurement-orders-tbody" class="divide-y divide-slate-100">
+          {% for po in pos %}
+            {% include "partials/po_row.html" %}
+          {% else %}
+          <tr>
+            <td colspan="6" class="px-6 py-12 text-center text-slate-400 text-xs">
+              目前暫無採購單記錄，請於上方建立第一筆採購單
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Client-side helper for dynamic SKU cost fill, multi-item rows and tabs -->
+<script>
+  function switchProcurementTab(tab) {
+    const secManual = document.getElementById('section-manual-po');
+    const secBom = document.getElementById('section-bom-po');
+    const btnManual = document.getElementById('tab-btn-manual');
+    const btnBom = document.getElementById('tab-btn-bom');
+
+    if (tab === 'manual') {
+      secManual.classList.remove('hidden');
+      secBom.classList.add('hidden');
+      btnManual.className = 'pb-3 text-sm font-semibold border-b-2 border-indigo-600 text-indigo-600 transition-colors';
+      btnBom.className = 'pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors';
+    } else {
+      secManual.classList.add('hidden');
+      secBom.classList.remove('hidden');
+      btnBom.className = 'pb-3 text-sm font-semibold border-b-2 border-indigo-600 text-indigo-600 transition-colors';
+      btnManual.className = 'pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors';
+    }
+  }
+
+  function handleSkuChange(selectEl) {
+    const selectedOpt = selectEl.options[selectEl.selectedIndex];
+    if (selectedOpt && selectedOpt.dataset.cost) {
+      const row = selectEl.closest('.po-item-row');
+      const costInput = row.querySelector('.cost-input');
+      if (costInput) {
+        costInput.value = parseFloat(selectedOpt.dataset.cost).toFixed(2);
+      }
+    }
+  }
+
+  function addProcurementItemRow() {
+    const tbody = document.getElementById('po-items-tbody');
+    const firstRow = tbody.querySelector('.po-item-row');
+    if (!firstRow) return;
+    const newRow = firstRow.cloneNode(true);
+    const skuSelect = newRow.querySelector('.sku-select');
+    const qtyInput = newRow.querySelector('.qty-input');
+    const costInput = newRow.querySelector('.cost-input');
+    
+    skuSelect.selectedIndex = 0;
+    qtyInput.value = '10';
+    costInput.value = '0.00';
+    tbody.appendChild(newRow);
+  }
+
+  function removeProcurementItemRow(btn) {
+    const tbody = document.getElementById('po-items-tbody');
+    const rows = tbody.querySelectorAll('.po-item-row');
+    if (rows.length > 1) {
+      btn.closest('.po-item-row').remove();
+    } else {
+      alert('採購單必須保留至少一項物料');
+    }
+  }
+
+  // Run on initial load if prefill SKU is present and cost is empty
+  document.addEventListener('DOMContentLoaded', function() {
+    const firstSelect = document.querySelector('.sku-select');
+    const costInput = document.querySelector('.cost-input');
+    if (firstSelect && firstSelect.value && (!costInput || !costInput.value || costInput.value === '100.00')) {
+      handleSkuChange(firstSelect);
+    }
+  });
+</script>
+{% endblock %}

@@ -12,7 +12,8 @@
         "dependency-cruiser",
         "docx-manager",
         "cloudflare",
-        "htmx"
+        "frontend",
+        "software-testing"
       ]
     }
   ]

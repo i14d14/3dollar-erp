@@ -19,6 +19,9 @@ from src.channel_ui.web.routes.crm import router as crm_router
 from src.channel_ui.web.routes.dashboard import router as dashboard_router
 from src.channel_ui.web.routes.inventory import router as inventory_router
 from src.channel_ui.web.routes.orders import router as orders_router
+from src.channel_ui.web.routes.procurement import router as procurement_router
+from src.channel_ui.web.routes.line_demo import router as line_demo_router
+from src.channel_ui.web.toast_helper import render_toast_oob
 
 from src.channel_ui.web.view_service import WebViewService
 from src.core.ports.event_bus_port import EventBusPort
@@ -54,6 +57,17 @@ def format_user_error_message(detail: str) -> str:
     if m2:
         return f"調撥失敗：倉庫 {m2.group(1)} 之商品 {m2.group(2)} 可用庫存不足（可用量：{m2.group(3)}，需求量：{m2.group(4)}）"
 
+    # Transfer Reversal Patterns
+    if "already been reversed" in s or "已經撤回過" in s:
+        ref_match = re.search(r"(?:調撥單|Transfer)\s+([A-Za-z0-9_\-]+)", s)
+        ref_text = ref_match.group(1) if ref_match else ""
+        return f"調撥單 {ref_text} 已經撤回過，無法重複撤回" if ref_text else "該調撥單已經撤回過，無法重複撤回"
+
+    if "Transfer records not found" in s or "查無調撥單號" in s:
+        ref_match = re.search(r"(?:調撥單號|Transfer records not found:?)\s*([A-Za-z0-9_\-]+)?", s)
+        ref_text = ref_match.group(1) if (ref_match and ref_match.group(1)) else ""
+        return f"查無調撥單號 {ref_text} 之有效調撥流水" if ref_text else "查無指定之調撥單據流水"
+
     # Pattern: Cannot ship order X: status is 'Y', expected 'Z'
     m3 = re.search(r"Cannot ship order ([^:]+):\s*status is '([^']+)', expected '([^']+)'", s)
     if m3:
@@ -69,8 +83,8 @@ def format_user_error_message(detail: str) -> str:
     if m_cancel:
         return f"無法取消訂單 {m_cancel.group(1)}：單據目前為 '{m_cancel.group(2)}' 狀態，不可取消"
 
-    # Pattern: Product with SKU 'X' does not exist
-    m5 = re.search(r"Product with SKU '([^']+)' does not exist", s)
+    # Pattern: Product with SKU 'X' does not exist / Product SKU X does not exist
+    m5 = re.search(r"Product (?:with )?SKU '?([^' ]+)'? does not exist", s)
     if m5:
         return f"商品品號 '{m5.group(1)}' 不存在"
 
@@ -104,6 +118,21 @@ def format_user_error_message(detail: str) -> str:
         return "此商機先前已成功拋轉為 ERP 銷售訂單，不可重複轉單"
     if "stage is locked" in s or "狀態已鎖定為贏單" in s:
         return "商機已拋轉為 ERP 訂單，狀態已鎖定為贏單，不可任意變更"
+
+    # Procurement Domain Error Translations
+    if "Purchase order must have at least one item" in s:
+        return "建立採購單失敗：採購單必須包含至少一項商品明細"
+    m_po_invalid = re.search(r"Invalid quantity \(([^)]+)\) or unit cost \(([^)]+)\) for SKU ([^ ]+)", s)
+    if m_po_invalid:
+        return f"採購品項資料錯誤：品號 {m_po_invalid.group(3)} 之採購數量 ({m_po_invalid.group(1)}) 或單價 ({m_po_invalid.group(2)}) 格式無效"
+    m_po_submit = re.search(r"Cannot submit PO in status '([^']+)'", s)
+    if m_po_submit:
+        return f"無法送出採購單：目前單據狀態為 '{m_po_submit.group(1)}'，僅草稿 (DRAFT) 狀態可送出"
+    m_po_receive = re.search(r"Cannot receive PO ([^:]+):\s*status is '([^']+)', expected '([^']+)'", s)
+    if m_po_receive:
+        return f"無法驗收入庫：採購單目前狀態為 '{m_po_receive.group(2)}'，僅待到貨 ('{m_po_receive.group(3)}') 狀態可執行入庫驗收"
+    if "Purchase order" in s and "not found" in s:
+        return "查無指定之採購單"
 
     # Strip any trailing English tag in parentheses e.g. " (Insufficient available stock)"
     s = re.sub(r"\s*\([A-Za-z0-9_\- :.,]+\)$", "", s)
@@ -143,32 +172,29 @@ def create_app(
     # Custom exception handler for HTMX requests
     @app.exception_handler(HTTPException)
     async def htmx_http_exception_handler(request: Request, exc: HTTPException):
+        user_msg = format_user_error_message(exc.detail)
         # If request is from HTMX, return a visual error toast/banner to #toast-container via OOB swap
         if request.headers.get("HX-Request") == "true":
-            user_msg = format_user_error_message(exc.detail)
+            toast_oob = render_toast_oob(
+                templates=templates,
+                request=request,
+                message=f"執行失敗: {user_msg}",
+                type="error",
+                ttl_seconds=8,
+            )
             return HTMLResponse(
-                content=f"""
-                <div id="toast-container" hx-swap-oob="innerHTML:#toast-container">
-                  <div class="p-3.5 my-2 text-xs text-rose-800 bg-rose-50 border border-rose-300 rounded-xl flex items-center justify-between shadow-xl">
-                    <div class="flex items-center gap-2.5">
-                      <span class="text-rose-600 font-bold text-base">⚠️</span>
-                      <span class="font-semibold text-rose-900 leading-snug">執行失敗: {user_msg}</span>
-                    </div>
-                    <button onclick="document.getElementById('toast-container').innerHTML=''" class="text-rose-400 hover:text-rose-700 font-bold ml-3 text-lg leading-none">&times;</button>
-                  </div>
-                </div>
-                """,
+                content=toast_oob,
                 status_code=exc.status_code,
                 headers={"HX-Reswap": "none"},
             )
         if request.url.path.startswith("/api/"):
             return JSONResponse(
                 status_code=exc.status_code,
-                content={"detail": exc.detail},
+                content={"detail": user_msg},
             )
         # Default fallback
         return HTMLResponse(
-            content=f"<h1>Error {exc.status_code}</h1><p>{exc.detail}</p>",
+            content=f"<h1>Error {exc.status_code}</h1><p>{user_msg}</p>",
             status_code=exc.status_code,
         )
 
@@ -176,18 +202,15 @@ def create_app(
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         if request.headers.get("HX-Request") == "true":
+            toast_oob = render_toast_oob(
+                templates=templates,
+                request=request,
+                message="系統發生非預期異常，已記錄日誌，請稍後再試。",
+                type="error",
+                ttl_seconds=8,
+            )
             return HTMLResponse(
-                content=f"""
-                <div id="toast-container" hx-swap-oob="innerHTML:#toast-container">
-                  <div class="p-3.5 my-2 text-xs text-rose-800 bg-rose-50 border border-rose-300 rounded-xl flex items-center justify-between shadow-xl">
-                    <div class="flex items-center gap-2.5">
-                      <span class="text-rose-600 font-bold text-base">🚨</span>
-                      <span class="font-semibold text-rose-900 leading-snug">系統發生非預期異常，已記錄日誌，請稍後再試。</span>
-                    </div>
-                    <button onclick="document.getElementById('toast-container').innerHTML=''" class="text-rose-400 hover:text-rose-700 font-bold ml-3 text-lg leading-none">&times;</button>
-                  </div>
-                </div>
-                """,
+                content=toast_oob,
                 status_code=500,
                 headers={"HX-Reswap": "none"},
             )
@@ -204,10 +227,12 @@ def create_app(
     # Register routes
     app.include_router(dashboard_router)
     app.include_router(orders_router)
+    app.include_router(procurement_router)
     app.include_router(inventory_router)
     app.include_router(accounting_router)
     app.include_router(crm_router)
     app.include_router(line_router)
+    app.include_router(line_demo_router)
 
     # Dynamic plug-in discovery for Layer 4 (AI Wrapper) to preserve strict Layer 3 -> Layer 4 isolation
     try:

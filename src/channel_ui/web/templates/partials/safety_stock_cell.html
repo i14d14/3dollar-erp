@@ -1,0 +1,14 @@
+<td id="safety-cell-{{ warehouse_id }}-{{ sku }}" class="px-4 py-3 text-right font-mono text-slate-700">
+  <div class="inline-flex items-center gap-1.5 group justify-end">
+    <span class="font-medium text-slate-600">{{ safety_stock }}</span>
+    <button type="button"
+            hx-get="/inventory/safety-stock/edit?warehouse_id={{ warehouse_id }}&sku={{ sku }}"
+            hx-target="#safety-cell-{{ warehouse_id }}-{{ sku }}"
+            hx-swap="outerHTML"
+            data-testid="btn-edit-safety-{{ warehouse_id }}-{{ sku }}"
+            title="修改此倉安全存量"
+            class="opacity-60 group-hover:opacity-100 hover:text-indigo-600 text-slate-400 p-0.5 rounded transition text-xs cursor-pointer">
+      ✏️
+    </button>
+  </div>
+</td>

@@ -21,6 +21,8 @@ def seed_demo_data(db: Database, event_bus: EventBusPort) -> None:
 
     with db.transaction() as conn:
         wh_count = conn.execute("SELECT COUNT(*) FROM warehouses").fetchone()[0]
+        if wh_count > 0:
+            return
         je_count = conn.execute("SELECT COUNT(*) FROM journal_entries").fetchone()[0]
         crm_count = conn.execute("SELECT COUNT(*) FROM crm_contacts").fetchone()[0]
 

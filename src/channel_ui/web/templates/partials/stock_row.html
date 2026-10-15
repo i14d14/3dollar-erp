@@ -1,0 +1,46 @@
+<tr id="stock-row-{{ item.warehouse_id }}-{{ item.sku }}" data-testid="stock-row-{{ item.warehouse_id }}-{{ item.sku }}" class="hover:bg-slate-50 transition-colors">
+  <td class="px-4 py-3">
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium {% if item.warehouse_id == 'WH-MAIN' %}bg-indigo-50 text-indigo-700 border border-indigo-200{% else %}bg-purple-50 text-purple-700 border border-purple-200{% endif %}">
+      <span class="w-1.5 h-1.5 rounded-full {% if item.warehouse_id == 'WH-MAIN' %}bg-indigo-500{% else %}bg-purple-500{% endif %}"></span>
+      {{ item.warehouse_name }}
+    </span>
+  </td>
+  <td class="px-4 py-3 font-medium text-slate-900">{{ item.product_name }}</td>
+  <td class="px-4 py-3 font-mono text-xs text-slate-500">{{ item.sku }}</td>
+  <td class="px-4 py-3 text-right font-mono font-semibold text-slate-900">{{ item.physical_balance }}</td>
+  <td class="px-4 py-3 text-right font-mono text-amber-600">
+    {% if item.locked_qty > 0 %}
+      -{{ item.locked_qty }}
+    {% else %}
+      0
+    {% endif %}
+  </td>
+  <td class="px-4 py-3 text-right font-mono font-bold {% if item.available_qty <= 0 %}text-rose-600{% else %}text-emerald-600{% endif %}">
+    {{ item.available_qty }}
+  </td>
+  <td id="safety-cell-{{ item.warehouse_id }}-{{ item.sku }}" class="px-4 py-3 text-right font-mono text-slate-700">
+    <div class="inline-flex items-center gap-1.5 group justify-end">
+      <span class="font-medium text-slate-600">{{ item.safety_stock }}</span>
+      <button type="button"
+              hx-get="/inventory/safety-stock/edit?warehouse_id={{ item.warehouse_id }}&sku={{ item.sku }}"
+              hx-target="#safety-cell-{{ item.warehouse_id }}-{{ item.sku }}"
+              hx-swap="outerHTML"
+              data-testid="btn-edit-safety-{{ item.warehouse_id }}-{{ item.sku }}"
+              title="修改此倉安全存量"
+              class="opacity-60 group-hover:opacity-100 hover:text-indigo-600 text-slate-400 p-0.5 rounded transition text-xs cursor-pointer">
+        ✏️
+      </button>
+    </div>
+  </td>
+  <td class="px-4 py-3 text-center">
+    {% if item.is_low_stock %}
+    <a href="/procurement?sku={{ item.sku }}&warehouse_id={{ item.warehouse_id }}&qty={{ (item.safety_stock - item.physical_balance)|int if item.safety_stock > item.physical_balance else 10 }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 shadow-2xs transition">
+      <span>⚠️ 低於安全量</span>
+    </a>
+    {% else %}
+    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+      存量充裕
+    </span>
+    {% endif %}
+  </td>
+</tr>

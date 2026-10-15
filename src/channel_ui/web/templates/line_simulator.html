@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <title>LINE 智能通路體驗 - 3Dollar ERP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif; }
+    .line-chat-bg { background-color: #849EB8; }
+    .line-user-bubble { background-color: #8CE342; }
+  </style>
+</head>
+<body class="h-full bg-slate-950 flex items-center justify-center p-4 overflow-hidden antialiased select-none">
+
+  <!-- iPhone Frame Mockup -->
+  <div class="relative w-[385px] h-[780px] bg-black rounded-[48px] p-3 shadow-2xl border-4 border-slate-700 flex flex-col overflow-hidden">
+    
+    <!-- Dynamic Island / Speaker -->
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-30 flex items-center justify-center">
+      <div class="w-3 h-3 rounded-full bg-slate-900 border border-slate-800 ml-auto mr-3"></div>
+    </div>
+
+    <!-- Phone Screen -->
+    <div class="w-full h-full bg-[#849EB8] rounded-[38px] flex flex-col overflow-hidden relative pt-8">
+      
+      <!-- LINE Chat Header -->
+      <div class="bg-[#2C3E50]/90 backdrop-blur-md text-white px-4 py-3 flex items-center justify-between z-20 border-b border-white/10 shadow-sm">
+        <div class="flex items-center gap-2.5">
+          <span class="text-white/80 text-base font-bold cursor-pointer">‹</span>
+          <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-black shadow">
+            3$
+          </div>
+          <div>
+            <div class="font-bold text-xs flex items-center gap-1">
+              3Dollar ERP 智能通路
+              <span class="text-[10px] bg-emerald-500 text-white px-1 py-0.2 rounded font-mono">官方</span>
+            </div>
+            <div class="text-[10px] text-white/60">@3dollar_erp</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 text-white/70 text-xs">
+          <span>🔍</span>
+          <span>☰</span>
+        </div>
+      </div>
+
+      <!-- Chat Stream Messages -->
+      <div class="flex-1 p-4 overflow-y-auto space-y-4">
+        
+        <!-- Timestamp -->
+        <div class="text-center my-1">
+          <span class="bg-black/20 text-white/80 text-[10px] px-2.5 py-1 rounded-full font-medium">今天 下午 15:30</span>
+        </div>
+
+        <!-- User Message Bubble -->
+        <div class="flex justify-end items-end gap-1.5 animate-fade-in">
+          <span class="text-[9px] text-white/70 font-mono mb-0.5">15:30</span>
+          <div class="line-user-bubble text-slate-900 px-3.5 py-2 rounded-2xl rounded-tr-xs text-xs font-bold shadow-sm max-w-[75%] tracking-wide">
+            查單 {{ order_id }}
+          </div>
+        </div>
+
+        <!-- Bot Response Flex Message Bubble -->
+        <div class="flex items-start gap-2 animate-fade-in">
+          <div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5 shadow">
+            3$
+          </div>
+          <div class="space-y-1 max-w-[85%]">
+            <span class="text-[10px] text-white/80 font-medium">3Dollar ERP 官方助手</span>
+
+            <!-- Flex Bubble Card -->
+            <div class="bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200 text-xs">
+              
+              <!-- Card Header -->
+              <div class="bg-[#0284C7] text-white px-4 py-3 flex items-center justify-between">
+                <span class="font-bold text-xs tracking-wide">📋 訂單進度查詢結果</span>
+                <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded font-mono">即時連線</span>
+              </div>
+
+              <!-- Card Body -->
+              <div class="p-4 space-y-3">
+                <div class="space-y-1.5 text-slate-600 text-[11px]">
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-400">訂單編號</span>
+                    <span class="font-mono font-bold text-slate-800">{{ order_id }}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-400">處理進度</span>
+                    <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      ✓ 訂單已完成 (COMPLETED)
+                    </span>
+                  </div>
+                  {% if do_id %}
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-400">出貨單號</span>
+                    <span class="font-mono text-slate-700">{{ do_id }}</span>
+                  </div>
+                  {% endif %}
+                  {% if tracking_number %}
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-400">物流追蹤</span>
+                    <span class="font-mono font-bold text-sky-600">{{ tracking_number }}</span>
+                  </div>
+                  {% endif %}
+                  {% if invoice_number %}
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-400">電子發票</span>
+                    <span class="font-mono font-bold text-slate-800">{{ invoice_number }}</span>
+                  </div>
+                  {% endif %}
+                </div>
+
+                <hr class="border-slate-100">
+
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-slate-800 text-xs">訂單總計</span>
+                  <span class="font-bold text-sky-700 text-sm">NT$ {{ total_amount }}</span>
+                </div>
+              </div>
+
+              <!-- Card Footer -->
+              <div class="bg-slate-50 px-4 py-2.5 border-t border-slate-100 text-[10px] text-slate-500 text-center">
+                若有配送疑問，可於本聊天室直接對話諮詢。
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Rich Menu Bar (Bottom) -->
+      <div class="bg-white border-t border-slate-200 grid grid-cols-3 p-2 gap-2 text-center text-[11px] font-bold text-slate-700 z-20">
+        <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 flex flex-col items-center gap-0.5 cursor-pointer">
+          <span class="text-sm">📦</span>
+          <span>熱銷商品</span>
+        </div>
+        <div class="p-2 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 flex flex-col items-center gap-0.5 cursor-pointer shadow-xs">
+          <span class="text-sm">🔍</span>
+          <span>查單進度</span>
+        </div>
+        <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 flex flex-col items-center gap-0.5 cursor-pointer">
+          <span class="text-sm">💬</span>
+          <span>線上客服</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>

@@ -6,6 +6,20 @@
 {% block content %}
 <div class="space-y-6">
 
+  <!-- Top Action & Export Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+    <div>
+      <h2 class="text-sm font-bold text-slate-900">多倉庫存管理與實體盤點中心</h2>
+      <p class="text-xs text-slate-500 mt-0.5">即時掌握主倉與各門市倉可用存量 (Available = Physical - Locked) 與異動流水</p>
+    </div>
+    <a href="/inventory/export/stock-valuation.xlsx"
+       id="btn-export-stock-valuation"
+       data-testid="btn-export-stock-valuation"
+       class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-2xs hover:shadow-sm transition">
+      <span>📥 匯出雙倉庫存盤點底冊 (.xlsx)</span>
+    </a>
+  </div>
+
   <!-- Transfer Action Card -->
   <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
     <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
@@ -19,35 +33,44 @@
     </div>
 
     <!-- HTMX Transfer Form -->
-    <form hx-post="/inventory/transfer" hx-target="#stock-table-container" hx-swap="outerHTML" class="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
+    <form hx-post="/inventory/transfer" hx-target="#stock-table-container" hx-swap="outerHTML" data-testid="form-stock-transfer" class="grid grid-cols-1 sm:grid-cols-6 gap-3 text-xs">
       <div>
         <label class="block font-medium text-slate-700 mb-1">來源倉庫 (From)</label>
-        <select name="from_warehouse_id" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border focus:ring-indigo-500 focus:border-indigo-500">
-          <option value="WH-MAIN">主倉 (WH-MAIN)</option>
-          <option value="WH-STORE">門市倉 (WH-STORE)</option>
+        <select id="transfer-from-warehouse" name="from_warehouse_id" data-testid="select-transfer-from" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border focus:ring-indigo-500 focus:border-indigo-500">
+          {% for wh in warehouses %}
+          <option value="{{ wh.warehouse_id }}">{{ wh.name }} ({{ wh.warehouse_id }})</option>
+          {% endfor %}
         </select>
       </div>
 
       <div>
         <label class="block font-medium text-slate-700 mb-1">目的倉庫 (To)</label>
-        <select name="to_warehouse_id" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border focus:ring-indigo-500 focus:border-indigo-500">
-          <option value="WH-STORE">門市倉 (WH-STORE)</option>
-          <option value="WH-MAIN">主倉 (WH-MAIN)</option>
+        <select id="transfer-to-warehouse" name="to_warehouse_id" data-testid="select-transfer-to" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border focus:ring-indigo-500 focus:border-indigo-500">
+          {% for wh in warehouses %}
+          <option value="{{ wh.warehouse_id }}" {% if loop.index == 2 %}selected{% endif %}>{{ wh.name }} ({{ wh.warehouse_id }})</option>
+          {% endfor %}
         </select>
       </div>
 
       <div>
         <label class="block font-medium text-slate-700 mb-1">調撥品號 (SKU)</label>
-        <input type="text" name="sku" required placeholder="如 SKU-001" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border font-mono uppercase focus:ring-indigo-500 focus:border-indigo-500">
+        <input type="text" name="sku" required placeholder="如 SKU-001" data-testid="input-transfer-sku" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border font-mono uppercase focus:ring-indigo-500 focus:border-indigo-500">
       </div>
 
       <div>
         <label class="block font-medium text-slate-700 mb-1">調撥數量</label>
-        <input type="number" name="qty" required min="1" step="1" value="10" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border font-mono focus:ring-indigo-500 focus:border-indigo-500">
+        <input type="number" name="qty" required min="1" step="1" value="10" data-testid="input-transfer-qty" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border font-mono focus:ring-indigo-500 focus:border-indigo-500">
+      </div>
+
+      <div>
+        <label class="block font-medium text-slate-700 mb-1">
+          目的倉安全量 <span class="text-[10px] text-slate-400 font-normal">(首次入庫)</span>
+        </label>
+        <input type="number" name="to_safety_stock" min="0" step="1" value="10" data-testid="input-transfer-safety-stock" class="w-full rounded-md border-slate-300 shadow-2xs p-2 border font-mono focus:ring-indigo-500 focus:border-indigo-500" title="若目的倉尚未設立過該商品安全量，以此為準">
       </div>
 
       <div class="flex items-end">
-        <button type="submit" class="w-full px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-sm transition flex items-center justify-center gap-1">
+        <button type="submit" data-testid="btn-submit-transfer" class="w-full px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-sm transition flex items-center justify-center gap-1 cursor-pointer">
           <span>執行調撥</span>
           <span class="htmx-indicator animate-spin">⏳</span>
         </button>
@@ -65,62 +88,50 @@
   </div>
 
   <!-- Append-Only Double Entry Ledger Stream -->
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
-      <div>
-        <h2 class="font-bold text-slate-900 text-sm">庫存雙記帳異動明細流水 (Stock Ledger Audit Trail)</h2>
-        <p class="text-xs text-slate-500 mt-0.5">嚴格 Append-Only 記錄，禁止修改或刪除任何過往流水</p>
-      </div>
-      <span class="text-xs text-slate-500 font-mono">最新 50 筆</span>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse text-xs">
-        <thead>
-          <tr class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider">
-            <th class="px-4 py-2.5">流水序號 / 時間</th>
-            <th class="px-4 py-2.5">倉庫</th>
-            <th class="px-4 py-2.5">品號 / 品名</th>
-            <th class="px-4 py-2.5 text-right">異動量 (Delta)</th>
-            <th class="px-4 py-2.5 text-right">異動後結餘</th>
-            <th class="px-4 py-2.5">來源類型</th>
-            <th class="px-4 py-2.5">單據參考編號</th>
-            <th class="px-4 py-2.5">備註說明</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100 font-mono">
-          {% for row in ledger_movements %}
-          <tr class="hover:bg-slate-50 transition-colors">
-            <td class="px-4 py-2 text-slate-500">
-              <div class="text-slate-800 font-medium">{{ row.ledger_id }}</div>
-              <div class="text-[10px] text-slate-400">{{ row.created_at }}</div>
-            </td>
-            <td class="px-4 py-2 font-sans">{{ row.warehouse_name }}</td>
-            <td class="px-4 py-2">
-              <div class="text-slate-900 font-semibold">{{ row.sku }}</div>
-              <div class="text-slate-500 text-[11px] font-sans">{{ row.product_name }}</div>
-            </td>
-            <td class="px-4 py-2 text-right {{ row.qty_delta_class }} text-sm">{{ row.qty_delta_formatted }}</td>
-            <td class="px-4 py-2 text-right font-bold text-slate-900">{{ row.balance_after }}</td>
-            <td class="px-4 py-2">
-              <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
-                {{ row.reference_type }}
-              </span>
-            </td>
-            <td class="px-4 py-2 text-indigo-600 font-medium">{{ row.reference_id }}</td>
-            <td class="px-4 py-2 font-sans text-slate-500">{{ row.notes }}</td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="8" class="px-6 py-8 text-center text-slate-400 text-sm font-sans">
-              暫無庫存異動流水
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+  {% include "partials/ledger_table.html" %}
 
 </div>
+
+<script>
+(function() {
+  function setupWarehouseSelects() {
+    const fromSelect = document.getElementById('transfer-from-warehouse');
+    const toSelect = document.getElementById('transfer-to-warehouse');
+    if (!fromSelect || !toSelect) return;
+
+    let prevFrom = fromSelect.value;
+    let prevTo = toSelect.value;
+
+    function syncWarehouses(source) {
+      if (source === 'from') {
+        if (fromSelect.value === toSelect.value) {
+          toSelect.value = prevFrom;
+        }
+      } else if (source === 'to') {
+        if (toSelect.value === fromSelect.value) {
+          fromSelect.value = prevTo;
+        }
+      }
+
+      // 目的倉庫關閉與來源倉庫相同之選項
+      Array.from(toSelect.options).forEach(opt => {
+        opt.disabled = (opt.value === fromSelect.value);
+      });
+
+      prevFrom = fromSelect.value;
+      prevTo = toSelect.value;
+    }
+
+    fromSelect.addEventListener('change', () => syncWarehouses('from'));
+    toSelect.addEventListener('change', () => syncWarehouses('to'));
+    syncWarehouses('init');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupWarehouseSelects);
+  } else {
+    setupWarehouseSelects();
+  }
+})();
+</script>
 {% endblock %}

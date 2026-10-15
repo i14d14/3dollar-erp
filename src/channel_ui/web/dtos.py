@@ -11,6 +11,9 @@ class LowStockItemDTO:
     physical_balance: Decimal
     safety_stock: int
     warehouse_name: str
+    warehouse_id: str = "WH-MAIN"
+    suggested_qty: int = 1
+    suggested_supplier: str = ""
 
 
 @dataclass
@@ -22,6 +25,8 @@ class OrderRowDTO:
     status_badge_class: str
     total_amount_formatted: str
     created_at: str
+    warehouse_id: str = "WH-MAIN"
+    customer_name: Optional[str] = None
     do_id: Optional[str] = None
     tracking_number: Optional[str] = None
     invoice_number: Optional[str] = None
@@ -33,6 +38,50 @@ class OrderRowDTO:
     has_invoice_pdf: bool = False
     delivery_orders_count: int = 0
     delivery_order_ids: List[str] = field(default_factory=list)
+
+
+@dataclass
+class OrderShipModalItemDTO:
+    item_id: str
+    order_id: str
+    sku: str
+    product_name: str
+    qty: Decimal
+    remaining_qty: Decimal
+    shipped_qty: Decimal = Decimal("0.0")
+    unit_price: Decimal = Decimal("0.0")
+    subtotal: Decimal = Decimal("0.0")
+
+
+@dataclass
+class OrderShipModalDTO:
+    order_id: str
+    customer_id: str
+    customer_name: Optional[str]
+    warehouse_id: str
+    items: List[OrderShipModalItemDTO]
+
+
+@dataclass
+class DeliveryAllocationViewDTO:
+    allocation_id: str
+    do_id: str
+    order_id: str
+    item_id: str
+    sku: str
+    product_name: str
+    allocated_qty: Decimal
+    created_at: Optional[str] = None
+
+
+@dataclass
+class DeliveryOrderViewDTO:
+    do_id: str
+    order_id: str
+    warehouse_id: str
+    tracking_number: str
+    shipped_at: Optional[str] = None
+    allocations: List[DeliveryAllocationViewDTO] = field(default_factory=list)
 
 
 @dataclass
@@ -156,6 +205,7 @@ class AgingItemViewDTO:
     bucket_badge_class: str
     status: str
     can_settle: bool
+    partner_id: str = ""
 
 
 @dataclass
@@ -194,6 +244,8 @@ class DealCardDTO:
     converted_order_id: Optional[str] = None
     latest_quote_id: Optional[str] = None
     latest_quote_number: Optional[str] = None
+    items_summary: str = ""
+    items_json_str: str = "[]"
     can_advance_discovery: bool = False
     can_advance_proposal: bool = False
     can_convert_order: bool = False
@@ -219,5 +271,36 @@ class CrmKanbanDTO:
     proposal_deals: List[DealCardDTO]
     won_deals: List[DealCardDTO]
     lost_deals: List[DealCardDTO]
+
+
+@dataclass
+class PurchaseOrderItemDTO:
+    sku: str
+    product_name: str
+    qty: Decimal
+    unit_cost: Decimal
+    subtotal: Decimal
+    qty_formatted: str
+    unit_cost_formatted: str
+    subtotal_formatted: str
+    is_first_inbound: bool = False
+    current_safety_stock: int = 10
+
+
+@dataclass
+class PurchaseOrderRowDTO:
+    po_id: str
+    supplier_name: str
+    status: str
+    status_label: str
+    status_badge_class: str
+    total_amount_formatted: str
+    created_at_formatted: str
+    warehouse_id: str = "WH-MAIN"
+    items: List[PurchaseOrderItemDTO] = field(default_factory=list)
+    items_summary: str = ""
+    can_submit: bool = False
+    can_receive: bool = False
+    grn_id: Optional[str] = None
 
 

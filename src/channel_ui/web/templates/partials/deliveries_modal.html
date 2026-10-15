@@ -5,7 +5,7 @@
       <div>
         <h3 class="font-bold text-slate-800 text-base">出貨單紀錄與歷程 (Delivery Fulfillment History)</h3>
         <p class="text-xs text-slate-500 font-mono mt-0.5">
-          銷售訂單：{{ order.order_id }} ｜ 累計出貨批次：<span class="font-bold text-indigo-600">{{ deliveries|length }}</span> 批
+          銷售訂單：{{ order.order_id }} ｜ {% if customer_name %}客戶：<span class="font-semibold text-slate-700">{{ customer_name }}</span> ({{ order.customer_id }}) ｜ {% endif %}累計出貨批次：<span class="font-bold text-indigo-600">{{ deliveries|length }}</span> 批
         </p>
       </div>
       <button type="button" onclick="document.getElementById('deliveries-modal').remove()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">&times;</button>
@@ -37,14 +37,14 @@
             <a href="/orders/{{ order.order_id }}/label.pdf?do_id={{ d.do_id }}"
                target="_blank"
                class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded border border-slate-300 shadow-2xs transition">
-              🏷️ 100x150 標籤
+              🏷️ 100x150 出貨單
             </a>
             <button type="button"
                     hx-get="/orders/{{ order.order_id }}/a4-label-modal?do_id={{ d.do_id }}"
                     hx-target="#order-modal-container"
                     hx-swap="innerHTML"
                     class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded border border-indigo-200 shadow-2xs transition">
-              📄 A4 貼紙 (選格位)
+              📄 A4 出貨單 (選格位)
             </button>
           </div>
         </div>
@@ -55,16 +55,19 @@
             <thead>
               <tr class="text-[11px] text-slate-400 border-b border-slate-100 font-semibold">
                 <th class="pb-1">分配識別碼 (Allocation ID)</th>
-                <th class="pb-1">商品編號 (SKU)</th>
+                <th class="pb-1">商品品名 (SKU)</th>
                 <th class="pb-1 text-right">此批出貨數量</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-50 text-slate-700 font-mono">
+            <tbody class="divide-y divide-slate-50 text-slate-700">
               {% for alloc in d.allocations %}
               <tr>
-                <td class="py-1.5 text-slate-500">{{ alloc.allocation_id }}</td>
-                <td class="py-1.5 font-semibold text-slate-900">{{ alloc.sku }}</td>
-                <td class="py-1.5 text-right font-bold text-emerald-600">{{ alloc.allocated_qty|int }} 件</td>
+                <td class="py-1.5 text-slate-500 font-mono">{{ alloc.allocation_id }}</td>
+                <td class="py-1.5">
+                  <span class="font-semibold text-slate-900">{{ alloc.product_name or alloc.sku }}</span>
+                  <span class="text-xs text-slate-400 font-mono">({{ alloc.sku }})</span>
+                </td>
+                <td class="py-1.5 text-right font-bold text-emerald-600 font-mono">{{ alloc.allocated_qty|int }} 件</td>
               </tr>
               {% endfor %}
             </tbody>

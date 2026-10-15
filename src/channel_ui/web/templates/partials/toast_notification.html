@@ -1,0 +1,82 @@
+<div data-testid="toast-card" class="toast-card relative overflow-hidden rounded-xl shadow-xl border p-3.5 my-2 text-xs flex items-center justify-between gap-3 transition-all duration-300
+  {% if type == 'error' %}
+    bg-rose-50 border-rose-300 text-rose-950
+  {% elif type == 'info' %}
+    bg-indigo-50 border-indigo-300 text-indigo-950
+  {% else %}
+    bg-emerald-50 border-emerald-300 text-emerald-950
+  {% endif %}"
+  data-ttl="{{ (ttl_seconds | default(6)) * 1000 }}">
+
+  <!-- Left: Status Icon & Message Text -->
+  <div class="flex items-start gap-2.5 min-w-0 flex-1">
+    <span class="text-base flex-shrink-0 font-bold leading-none mt-0.5">
+      {% if type == 'error' %}🚨{% elif type == 'info' %}ℹ️{% else %}✅{% endif %}
+    </span>
+    <span data-testid="toast-message" class="font-medium break-words whitespace-normal leading-relaxed">
+      {{ message }}
+    </span>
+  </div>
+
+  <!-- Right: Undo Action & Dismiss Button -->
+  <div class="flex items-center gap-2 flex-shrink-0">
+    {% if undo_url %}
+    <button data-testid="btn-toast-undo"
+            type="button"
+            hx-post="{{ undo_url }}"
+            {% if undo_target %}hx-target="{{ undo_target }}"{% endif %}
+            {% if undo_select %}hx-select="{{ undo_select }}"{% endif %}
+            {% if undo_swap %}hx-swap="{{ undo_swap }}"{% endif %}
+            {% if undo_vals %}hx-vals='{{ undo_vals | safe }}'{% endif %}
+            class="px-2.5 py-1 text-xs font-semibold rounded shadow-xs transition active:scale-95 flex items-center gap-1 cursor-pointer
+              {% if type == 'error' %}
+                bg-rose-600 hover:bg-rose-700 text-white
+              {% elif type == 'info' %}
+                bg-indigo-600 hover:bg-indigo-700 text-white
+              {% else %}
+                bg-emerald-600 hover:bg-emerald-700 text-white
+              {% endif %}">
+      <span>{{ undo_label | default('撤回') }}</span>
+      <span class="htmx-indicator animate-spin">⏳</span>
+    </button>
+    {% endif %}
+
+    <button data-testid="btn-toast-dismiss"
+            type="button"
+            data-toast-dismiss
+            title="關閉通知"
+            class="font-bold text-base leading-none px-1.5 py-0.5 rounded cursor-pointer transition
+              {% if type == 'error' %}
+                text-rose-400 hover:text-rose-700 hover:bg-rose-100
+              {% elif type == 'info' %}
+                text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100
+              {% else %}
+                text-emerald-500 hover:text-emerald-800 hover:bg-emerald-100
+              {% endif %}">
+      &times;
+    </button>
+  </div>
+
+  <!-- Bottom: Linear Progress Bar (TTL Countdown) -->
+  {% if ttl_seconds and ttl_seconds > 0 %}
+  <div class="absolute bottom-0 left-0 right-0 h-1 overflow-hidden pointer-events-none
+    {% if type == 'error' %}
+      bg-rose-200/60
+    {% elif type == 'info' %}
+      bg-indigo-200/60
+    {% else %}
+      bg-emerald-200/60
+    {% endif %}">
+    <div class="toast-progress-bar h-full
+      {% if type == 'error' %}
+        bg-rose-500
+      {% elif type == 'info' %}
+        bg-indigo-500
+      {% else %}
+        bg-emerald-500
+      {% endif %}"
+      style="--toast-ttl: {{ ttl_seconds }}s;">
+    </div>
+  </div>
+  {% endif %}
+</div>

@@ -201,7 +201,9 @@ class LineBotService:
         # 4. Render success receipt flex
         items_summary = [
             {
-                "sku": f"{prod.name} ({sku})",
+                "sku": sku,
+                "product_name": prod.name,
+                "name": prod.name,
                 "qty": int(qty) if qty % 1 == 0 else float(qty),
                 "subtotal": float(qty * prod.selling_price),
             }
@@ -244,9 +246,14 @@ class LineBotService:
             ).fetchone()
             invoice_number = inv_row["invoice_number"] if inv_row else None
 
+            p_rows = conn.execute("SELECT sku, name FROM products").fetchall()
+            prod_map = {r["sku"]: r["name"] for r in p_rows}
+
         items_summary = [
             {
                 "sku": it.sku,
+                "product_name": prod_map.get(it.sku, it.sku),
+                "name": prod_map.get(it.sku, it.sku),
                 "qty": int(it.qty) if it.qty % 1 == 0 else float(it.qty),
                 "subtotal": float(it.subtotal),
             }

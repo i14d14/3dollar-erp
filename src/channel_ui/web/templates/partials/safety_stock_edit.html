@@ -1,0 +1,24 @@
+<td id="safety-cell-{{ warehouse_id }}-{{ sku }}" class="px-4 py-2 text-right">
+  <form hx-post="/inventory/safety-stock"
+        hx-target="#stock-row-{{ warehouse_id }}-{{ sku }}"
+        hx-swap="outerHTML"
+        class="inline-flex items-center gap-1 justify-end">
+    <input type="hidden" name="warehouse_id" value="{{ warehouse_id }}">
+    <input type="hidden" name="sku" value="{{ sku }}">
+    <input type="number" name="safety_stock" value="{{ safety_stock }}" min="0" required
+           data-testid="input-edit-safety-{{ warehouse_id }}-{{ sku }}"
+           class="w-16 px-1.5 py-0.5 text-xs text-right font-mono border border-indigo-400 rounded focus:ring-1 focus:ring-indigo-500 shadow-2xs">
+    <button type="submit"
+            data-testid="btn-save-safety-{{ warehouse_id }}-{{ sku }}"
+            class="px-2 py-0.5 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 transition cursor-pointer">
+      儲存
+    </button>
+    <button type="button"
+            hx-get="/inventory/safety-stock/cancel?warehouse_id={{ warehouse_id }}&sku={{ sku }}"
+            hx-target="#safety-cell-{{ warehouse_id }}-{{ sku }}"
+            hx-swap="outerHTML"
+            class="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-xs hover:bg-slate-300 transition cursor-pointer">
+      ✕
+    </button>
+  </form>
+</td>

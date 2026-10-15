@@ -1,0 +1,94 @@
+<div id="convert-deal-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-fade-in">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div>
+        <h3 class="font-bold text-slate-800 text-base">贏單轉 ERP 銷售訂單確認 (Convert Deal to Order)</h3>
+        <p class="text-xs text-slate-500 font-mono mt-0.5">商機編號：{{ deal.deal_id }} • {{ deal.title }}{% if quote %} • 依據報價單：{{ quote.quote_number }}{% endif %}</p>
+      </div>
+      <button type="button" onclick="document.getElementById('convert-deal-modal').remove()" class="text-slate-400 hover:text-slate-700 text-lg leading-none cursor-pointer">&times;</button>
+    </div>
+    
+    <form hx-post="/crm/deals/{{ deal.deal_id }}/convert-to-order"
+          hx-target="#crm-container"
+          hx-select="#crm-container"
+          hx-swap="outerHTML"
+          hx-on::after-request="if(event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { document.getElementById('convert-deal-modal').remove(); }"
+          novalidate
+          class="p-5 space-y-4">
+      
+      <!-- Customer & Sales Destination Info -->
+      <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+        <div class="flex justify-between">
+          <span class="text-slate-500">客戶公司：</span>
+          <span class="font-semibold text-slate-900">{{ company_name }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">銷售通路：</span>
+          <span class="font-medium text-slate-800 font-mono">CRM (商機拋轉通路)</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <label for="select-convert-warehouse" class="text-slate-500">預計出貨倉：</label>
+          <select name="warehouse_id" id="select-convert-warehouse" class="text-xs px-2 py-1 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500 font-mono font-medium text-slate-800">
+            {% for wh in warehouses %}
+            <option value="{{ wh.warehouse_id }}" {% if wh.warehouse_id == 'WH-MAIN' %}selected{% endif %}>
+              {{ wh.warehouse_id }} - {{ wh.name }}
+            </option>
+            {% else %}
+            <option value="WH-MAIN" selected>WH-MAIN - 台北總倉</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Items Breakdown -->
+      <div>
+        <div class="text-xs font-semibold text-slate-700 mb-1.5">將轉入 ERP 訂單之物料明細：</div>
+        <div class="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100 text-xs">
+          <div class="grid grid-cols-12 bg-slate-50 p-2 font-medium text-slate-500">
+            <div class="col-span-6">品號</div>
+            <div class="col-span-3 text-right">數量</div>
+            <div class="col-span-3 text-right">小計金額</div>
+          </div>
+          {% if deal_items %}
+            {% for item in deal_items %}
+            <div class="grid grid-cols-12 p-2.5 items-center">
+              <div class="col-span-6 font-mono font-medium text-slate-800">{{ item.sku }}</div>
+              <div class="col-span-3 text-right font-mono text-slate-600">{{ item.qty }}</div>
+              <div class="col-span-3 text-right font-mono text-slate-900 font-semibold">NT$ {{ "{:,.2f}".format(item.subtotal) }}</div>
+            </div>
+            {% endfor %}
+            <div class="grid grid-cols-12 p-2.5 bg-slate-50 font-semibold text-slate-800 items-center border-t border-slate-200">
+              <div class="col-span-9 text-right text-xs">預計訂單總計：</div>
+              <div class="col-span-3 text-right font-mono text-emerald-700 font-bold">NT$ {{ "{:,.2f}".format(total_amount) }}</div>
+            </div>
+          {% else %}
+            <div class="p-3 text-center text-slate-400 italic">無特定物料明細（預估總金額：NT$ {{ "{:,.2f}".format(deal.expected_amount) }}）</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Impact Notice -->
+      <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs space-y-1 text-emerald-900">
+        <div class="font-bold flex items-center gap-1.5 text-emerald-800">
+          ⚡ 贏單拋轉流程說明：
+        </div>
+        <ul class="list-disc list-inside space-y-0.5 text-[11px] text-emerald-700">
+          <li>商機階段將正式晉級至【WON (贏單成交)】並鎖定禁止重複轉單</li>
+          <li>立即在 Dura ERP 核心引擎建立對應的 DRAFT 銷售訂單 (SO)</li>
+          <li>後續可於【訂單與出貨】進行鎖庫、出貨單 (DO) 列印與開立電子發票</li>
+        </ul>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('convert-deal-modal').remove()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">
+          取消
+        </button>
+        <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1 cursor-pointer">
+          <span>確認轉為 ERP 正式訂單</span>
+          <span class="htmx-indicator animate-spin">⏳</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

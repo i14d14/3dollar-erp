@@ -8,7 +8,7 @@ from src.core.domain.order import OrderChannel, SalesOrder
 from src.core.ports.event_bus_port import EventBusPort
 from src.core.services.order_service import OrderService
 from src.extended_core.crm.documents.quote_document_engine import QuoteDocumentEngine
-from src.extended_core.crm.models import Contact, Deal, DealStage, Quote, QuoteItem, QuoteStatus
+from src.extended_core.crm.models import Contact, Deal, DealItem, DealStage, Quote, QuoteItem, QuoteStatus
 from src.shared.database import Database
 
 
@@ -211,8 +211,9 @@ class CrmService:
         title: str,
         expected_amount: Decimal = Decimal("0.0"),
         stage: DealStage = DealStage.LEAD,
+        items: Optional[List[Tuple[str, Decimal, Decimal]]] = None,  # (sku, qty, unit_price)
     ) -> Deal:
-        """為指定客戶建立新商機。"""
+        """為指定客戶建立新商機，支援多品項 (SKU * 數量 * 單價) 計價。"""
         contact = self.get_contact(contact_id)
         if not contact:
             raise ValueError(f"指定的客戶不存在: {contact_id} (Contact not found)")
@@ -220,10 +221,36 @@ class CrmService:
         title_clean = (title or "").strip()
         if not title_clean:
             raise ValueError("商機名稱不可為空 (Deal title is required)")
-        if expected_amount < Decimal("0.0"):
-            raise ValueError("預估金額不可為負數 (Expected amount cannot be negative)")
 
+        deal_items: List[DealItem] = []
         deal_id = f"DEAL-{uuid.uuid4().hex[:8].upper()}"
+
+        if items:
+            calc_amount = Decimal("0.0")
+            for sku, qty, unit_price in items:
+                q_dec = Decimal(str(qty))
+                p_dec = Decimal(str(unit_price))
+                if q_dec <= Decimal("0.0"):
+                    raise ValueError(f"品項 {sku} 之數量必須大於 0 (Quantity must be greater than 0)")
+                if p_dec < Decimal("0.0"):
+                    raise ValueError(f"品項 {sku} 之預估單價不得為負數 (Price cannot be negative)")
+                subtot = q_dec * p_dec
+                calc_amount += subtot
+                deal_items.append(
+                    DealItem(
+                        deal_item_id=f"DITEM-{uuid.uuid4().hex[:8].upper()}",
+                        deal_id=deal_id,
+                        sku=sku.strip().upper(),
+                        qty=q_dec,
+                        unit_price=p_dec,
+                        subtotal=subtot,
+                    )
+                )
+            expected_amount = calc_amount
+        else:
+            if expected_amount < Decimal("0.0"):
+                raise ValueError("預估金額不可為負數 (Expected amount cannot be negative)")
+
         deal = Deal(
             deal_id=deal_id,
             contact_id=contact_id,
@@ -231,6 +258,7 @@ class CrmService:
             stage=stage,
             expected_amount=expected_amount,
             converted_order_id=None,
+            items=deal_items,
         )
 
         with self.db.transaction() as conn:
@@ -241,11 +269,19 @@ class CrmService:
                 """,
                 (deal.deal_id, deal.contact_id, deal.title, deal.stage.value, float(deal.expected_amount)),
             )
+            for it in deal_items:
+                conn.execute(
+                    """
+                    INSERT INTO crm_deal_items (deal_item_id, deal_id, sku, qty, unit_price, subtotal)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (it.deal_item_id, it.deal_id, it.sku, float(it.qty), float(it.unit_price), float(it.subtotal)),
+                )
 
         return deal
 
     def get_deal(self, deal_id: str) -> Optional[Deal]:
-        """依據 deal_id 查詢商機。"""
+        """依據 deal_id 查詢商機，含品項明細。"""
         with self.db.transaction() as conn:
             row = conn.execute(
                 "SELECT deal_id, contact_id, title, stage, expected_amount, converted_order_id FROM crm_deals WHERE deal_id = ?",
@@ -253,6 +289,23 @@ class CrmService:
             ).fetchone()
             if not row:
                 return None
+
+            item_rows = conn.execute(
+                "SELECT deal_item_id, deal_id, sku, qty, unit_price, subtotal FROM crm_deal_items WHERE deal_id = ?",
+                (deal_id,),
+            ).fetchall()
+            items = [
+                DealItem(
+                    deal_item_id=r["deal_item_id"],
+                    deal_id=r["deal_id"],
+                    sku=r["sku"],
+                    qty=Decimal(str(r["qty"])),
+                    unit_price=Decimal(str(r["unit_price"])),
+                    subtotal=Decimal(str(r["subtotal"])),
+                )
+                for r in item_rows
+            ]
+
             return Deal(
                 deal_id=row["deal_id"],
                 contact_id=row["contact_id"],
@@ -260,14 +313,37 @@ class CrmService:
                 stage=DealStage(row["stage"]),
                 expected_amount=Decimal(str(row["expected_amount"])),
                 converted_order_id=row["converted_order_id"],
+                items=items,
             )
+
+    def delete_draft_deal(self, deal_id: str) -> None:
+        """Delete a draft deal in LEAD stage prior to quotes or conversion."""
+        with self.db.transaction() as conn:
+            row = conn.execute(
+                "SELECT deal_id, stage, converted_order_id FROM crm_deals WHERE deal_id = ?",
+                (deal_id,),
+            ).fetchone()
+            if not row:
+                raise ValueError(f"查無商機 {deal_id} (Deal not found)")
+
+            if row["converted_order_id"]:
+                raise ValueError(f"無法撤回商機 {deal_id}：已拋轉為 ERP 銷售訂單 (Already converted to order)")
+
+            # Check no quotes have been issued
+            q_row = conn.execute("SELECT 1 FROM crm_quotes WHERE deal_id = ?", (deal_id,)).fetchone()
+            if q_row:
+                raise ValueError(f"無法撤回商機 {deal_id}：已有建立報價單記錄 (Quotes exist)")
+
+            conn.execute("DELETE FROM crm_deal_items WHERE deal_id = ?", (deal_id,))
+            conn.execute("DELETE FROM crm_deals WHERE deal_id = ?", (deal_id,))
+
 
     def list_deals(
         self,
         stage: Optional[DealStage] = None,
         contact_id: Optional[str] = None,
     ) -> List[Deal]:
-        """查詢商機清單，支援階段或客戶篩選。"""
+        """查詢商機清單，支援階段或客戶篩選，含品項明細。"""
         query = "SELECT deal_id, contact_id, title, stage, expected_amount, converted_order_id FROM crm_deals WHERE 1=1"
         params: List[Any] = []
         if stage:
@@ -280,6 +356,26 @@ class CrmService:
 
         with self.db.transaction() as conn:
             rows = conn.execute(query, tuple(params)).fetchall()
+            deal_ids = [r["deal_id"] for r in rows]
+            items_by_deal: Dict[str, List[DealItem]] = {}
+            if deal_ids:
+                placeholders = ",".join(["?"] * len(deal_ids))
+                item_rows = conn.execute(
+                    f"SELECT deal_item_id, deal_id, sku, qty, unit_price, subtotal FROM crm_deal_items WHERE deal_id IN ({placeholders})",
+                    deal_ids,
+                ).fetchall()
+                for ir in item_rows:
+                    items_by_deal.setdefault(ir["deal_id"], []).append(
+                        DealItem(
+                            deal_item_id=ir["deal_item_id"],
+                            deal_id=ir["deal_id"],
+                            sku=ir["sku"],
+                            qty=Decimal(str(ir["qty"])),
+                            unit_price=Decimal(str(ir["unit_price"])),
+                            subtotal=Decimal(str(ir["subtotal"])),
+                        )
+                    )
+
             return [
                 Deal(
                     deal_id=r["deal_id"],
@@ -288,6 +384,7 @@ class CrmService:
                     stage=DealStage(r["stage"]),
                     expected_amount=Decimal(str(r["expected_amount"])),
                     converted_order_id=r["converted_order_id"],
+                    items=items_by_deal.get(r["deal_id"], []),
                 )
                 for r in rows
             ]
@@ -321,6 +418,7 @@ class CrmService:
             stage=new_stage,
             expected_amount=deal.expected_amount,
             converted_order_id=deal.converted_order_id,
+            items=deal.items,
         )
 
     # =========================================================================
@@ -330,15 +428,20 @@ class CrmService:
     def create_quote(
         self,
         deal_id: str,
-        items: List[Tuple[str, Decimal, Decimal]],  # (sku, qty, unit_price)
+        items: Optional[List[Tuple[str, Decimal, Decimal]]] = None,  # (sku, qty, unit_price)
         valid_days: int = 30,
     ) -> Quote:
-        """為商機建立商業報價單，並記錄商品明細與自動更新商機預估金額。"""
+        """為商機建立商業報價單，並記錄商品明細與自動更新商機預估金額。若未傳入明細則自動繼承商機原品項。"""
         deal = self.get_deal(deal_id)
         if not deal:
             raise ValueError(f"查無商機 ID: {deal_id} (Deal not found)")
 
-        if not items:
+        if items is None:
+            if deal.items:
+                items = [(it.sku, it.qty, it.unit_price) for it in deal.items]
+            else:
+                raise ValueError("報價單必須包含至少一項商品明細 (Quote must contain at least one item)")
+        elif not items:
             raise ValueError("報價單必須包含至少一項商品明細 (Quote must contain at least one item)")
 
         valid_until = datetime.date.today() + datetime.timedelta(days=valid_days)
@@ -476,6 +579,51 @@ class CrmService:
                 quotes.append(q)
         return quotes
 
+    def delete_quote(self, quote_id: str) -> None:
+        """撤回並刪除草稿報價單，並依狀況復原商機預估金額與階段。"""
+        quote = self.get_quote(quote_id)
+        if not quote:
+            raise ValueError(f"查無報價單 ID: {quote_id} (Quote not found)")
+
+        deal = self.get_deal(quote.deal_id)
+        if not deal:
+            raise ValueError(f"查無報價單關聯之商機 ID: {quote.deal_id} (Deal not found)")
+
+        if deal.converted_order_id:
+            raise ValueError(
+                f"無法撤回報價單 {quote.quote_number}：商機已拋轉為 ERP 銷售訂單 ({deal.converted_order_id})"
+            )
+
+        if quote.status == QuoteStatus.ACCEPTED:
+            raise ValueError(f"無法撤回報價單 {quote.quote_number}：該報價單已處於已接受 (ACCEPTED) 狀態")
+
+        with self.db.transaction() as conn:
+            # Delete quote items and quote
+            conn.execute("DELETE FROM crm_quote_items WHERE quote_id = ?", (quote_id,))
+            conn.execute("DELETE FROM crm_quotes WHERE quote_id = ?", (quote_id,))
+
+            # Check remaining quotes for this deal
+            remaining_quotes = conn.execute(
+                "SELECT quote_id, total_amount FROM crm_quotes WHERE deal_id = ? ORDER BY created_at DESC",
+                (deal.deal_id,),
+            ).fetchall()
+
+            if remaining_quotes:
+                latest_amt = Decimal(str(remaining_quotes[0]["total_amount"]))
+                conn.execute(
+                    "UPDATE crm_deals SET expected_amount = ? WHERE deal_id = ?",
+                    (float(latest_amt), deal.deal_id),
+                )
+            else:
+                # No quotes remain. Revert expected amount back to deal items total or 0
+                original_amt = sum((it.subtotal for it in deal.items), Decimal("0.0"))
+                # If deal was moved to PROPOSAL solely because of quote, revert to DISCOVERY
+                revert_stage = DealStage.DISCOVERY if deal.stage == DealStage.PROPOSAL else deal.stage
+                conn.execute(
+                    "UPDATE crm_deals SET expected_amount = ?, stage = ? WHERE deal_id = ?",
+                    (float(original_amt), revert_stage.value, deal.deal_id),
+                )
+
     def get_quote_full_details(self, quote_id: str) -> Tuple[Contact, Deal, Quote, List[Dict[str, Any]]]:
         """取得報價單完整資訊（含關聯客戶、商機與商品中文規格名稱）。"""
         quote = self.get_quote(quote_id)
@@ -533,6 +681,7 @@ class CrmService:
         self,
         deal_id: str,
         quote_id: Optional[str] = None,
+        warehouse_id: str = "WH-MAIN",
     ) -> Tuple[SalesOrder, Deal]:
         """將贏單商機一鍵穿透拋轉為 ERP 核心銷售訂單 (SO)，建立雙向剛性勾稽。"""
         if not self.order_service:
@@ -556,19 +705,27 @@ class CrmService:
             if quotes:
                 target_quote = quotes[0]  # Latest quote
 
-        if not target_quote or not target_quote.items:
+        if target_quote and target_quote.items:
+            so_items = [(it.sku, it.qty, it.unit_price) for it in target_quote.items]
+        elif deal.items:
+            so_items = [(it.sku, it.qty, it.unit_price) for it in deal.items]
+        else:
             raise ValueError(
-                f"商機 {deal_id} 缺乏有效報價單與明細品項，無法轉為銷售訂單 (Quote with items required for conversion)"
+                f"商機 {deal_id} 缺乏有效報價單或商機物料明細，無法轉為銷售訂單 (Quote or deal items required for conversion)"
             )
 
-        # 1. Construct item tuples for OrderService.create_order
-        so_items = [(it.sku, it.qty, it.unit_price) for it in target_quote.items]
-
-        # 2. Call Layer 1 OrderService to create DRAFT SalesOrder
+        # 2. Call Layer 1 OrderService to create SalesOrder
         sales_order = self.order_service.create_order(
             customer_id=deal.contact_id,
             items=so_items,
             channel=OrderChannel.CRM,
+            warehouse_id=warehouse_id,
+        )
+
+        # 3. Automatically confirm order and secure virtual stock lock (下單即鎖庫)
+        sales_order = self.order_service.confirm_order(
+            order_id=sales_order.order_id,
+            warehouse_id=warehouse_id,
         )
 
         # 3. Update Deal stage to WON and record converted_order_id
@@ -581,11 +738,12 @@ class CrmService:
                 """,
                 (DealStage.WON.value, sales_order.order_id, deal_id),
             )
-            # Mark quote as ACCEPTED
-            conn.execute(
-                "UPDATE crm_quotes SET status = ? WHERE quote_id = ?",
-                (QuoteStatus.ACCEPTED.value, target_quote.quote_id),
-            )
+            # Mark quote as ACCEPTED if present
+            if target_quote:
+                conn.execute(
+                    "UPDATE crm_quotes SET status = ? WHERE quote_id = ?",
+                    (QuoteStatus.ACCEPTED.value, target_quote.quote_id),
+                )
 
         updated_deal = Deal(
             deal_id=deal.deal_id,

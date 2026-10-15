@@ -7,12 +7,12 @@
 ### 專案進度儀表板 (Dashboard)
 
 * **專案名稱**：3Dollar ERP (三圓科技產品架構複製)
-* **當前衝刺階段**：滿血版第 1 批（底層基建與核心彈性）真人真機手動驗收全數通過，推進第 2 批（次核心業務深化）
-* **研發策略模式**：雙軌制（青春版基準 MVP 交付完畢，滿血版四階段推進中）
-* **整體完成度**：100.0% [██████████]（青春版 100% + 滿血版第 1 批完工交付）
-* **當前焦點任務**：滿血版第 1 批完工交付歸檔、全系統 102/102 自動化測試通過、準備啟動第 2 批次核心業務深化
+* **當前衝刺階段**：高層級名稱優先呈現與視覺降噪 (High-Level Name Priority)
+* **研發策略模式**：雙軌制（青春版基準 MVP 交付完畢，滿血版推進中）
+* **整體完成度**：100.0%（全系統 194/194 PASS，架構邊界 0 違規）
+* **當前焦點任務**：Iteration 0924 高層級名稱翻轉全 4 批次交付完畢
 * **當前阻礙 (Blockers)**：無阻礙 (None)
-* **最後更新時間**：2026-09-21
+* **最後更新時間**：2026-09-24
 
 ---
 
@@ -90,12 +90,48 @@
 - [ ] **Task B2.4**: 報價單/合約多版本審批垂直切片（草稿多版本 v1/v2 比對、簽核狀態機、CRM 詳情頁版本下拉切換與主管核准/駁回按鈕）
 - [ ] **Task B2.5**: 微型 HR 考勤打卡核心垂直切片（`attendance_records` 資料模型、打卡防呆規則、`/hr/attendance` 考勤管理日曆切片與出缺勤統計卡）
 
+### [x] 業務整併與抽象層第 1 階段 (Core Contracts & Domain Relocation) - 已驗收
+- [x] **Task 8.1**: 發票與貨運單雙抽象層（`ShippingCarrierPort`、`InternalShippingCarrierProvider` 自簽條碼與 QR 碼、`OrderService` 解耦）
+- [x] **Task 8.2**: CRM Lead 品項化計價（`crm_deal_items` 資料表、`DealItem` 領域模型、`create_deal()` 多品項動態計價與自動累計）
+- [x] **Task 8.3**: BOM 與財務報表業務歸位（BOM 解析與比價移至 `src/core` 採購業務，財務整合報表移至 `src/extended_core/accounting` 會計業務，解除跨層違規並向下相容）
+
+### [x] 業務整併與前端垂直切片第 2 階段 (Web Workflow & UI Slices) - 已驗收
+- [x] **Task 9.1**: 採購進貨中心整合 BOM 解析比價與一鍵依供應商分割下單（`GET /procurement/bom/sample`、`POST /procurement/bom/compare`、`POST /procurement/bom/create-pos` 自動 Group by Supplier 生成多張 DRAFT PO 並即刻更新流水）
+- [x] **Task 9.2**: 營運儀表板低存量警報完整預填（`LowStockItemDTO` 擴充 `warehouse_id`, `suggested_qty`, `suggested_supplier`，點選「採購補貨」完整自動帶入料號、進貨倉、缺額量、單價與供應商）
+- [x] **Task 9.3**: 多倉庫存與流水人性化選單與一鍵採購（調撥表單來源/目的倉動態載入並顯示直觀中文名稱，低於安全量品項提供「一鍵下單 &rarr;」按鈕）
+- [x] **Task 9.4**: 會計記帳 4合1 財務報表中心與 MathJax 公式渲染（納入 `tab=reports` 財務報表中心與串流下載、引入 MathJax 3 使 $\sum Dr = \sum Cr$ 恆等式精美渲染）
+- [x] **Task 9.5**: 哩來 CRM Lead 品項化計價建檔與轉報價單繼承（「建立新商機」支援品項與數量動態輸入與總額自動試算、商機卡片顯示品項摘要、轉報價單彈窗自動繼承物料明細）
+#### [x] 體驗優化與多倉流轉深度迭代 (Iteration 0922)
+> 規格詳細定義：[`iteration_0922_00.md`](file:///d:/3dollar_erp/iteration_0922_00.md)
+- [x] **Batch 1**: 純前端微互動與字串精簡（庫存低量合併按鈕、調撥雙倉即時互斥與自動對調 JS、商機物料全面選填、預設數量歸 1、出貨單/A4出貨單正名、移除「原廠供應商」寫死字串）
+- [x] **Batch 2**: CRM 轉單明細繼承與文件 PDF 半形化（轉單彈窗繼承報價單品項、PyMuPDF 英數符號強制半形與字型收斂）
+- [x] **Batch 3**: 訂單出貨倉與採購目標倉多倉流轉架構（`sales_orders` 與 `purchase_orders` 增加 `warehouse_id`、轉單選出貨倉、驗收選目標倉、鎖扣倉一致性）
+- [x] **Batch 4**: 全域通知統一與撤回 (Undo) 機制完備（CRM 階段推進 Toast OOB 與撤回、採購入庫紅字退庫沖銷與 AP 沖銷撤回、全站靜態綠框消滅）
+
+#### [x] 體驗優化、系統防呆與報表對齊深度迭代 (Iteration 0923)
+> 規格詳細定義：[`iteration_0923_00.md`](file:///d:/3dollar_erp/iteration_0923_00.md) / [`iteration-0923-00.md`](file:///d:/3dollar_erp/iteration-0923-00.md)
+- [x] **Batch 1**: 純前端微互動、報表對齊與 Toast 多行自適應 (Pure Front-End: 報價單 Modal State 重置、庫存按鈕精簡、4 方塊文案對齊與字級放大、Toast break-words) - 已驗收 (4/4 PASS)
+- [x] **Batch 2**: 訂單客戶辨識、CRM 贏單自動鎖庫與 BOM 批次撤回 (Fulfillment & CRM: CRM 贏單自動 confirm_order 鎖庫、訂單清單關聯公司名稱、BOM 分割下單批次撤回) - 已驗收 (3/3 PASS)
+- [x] **Batch 3**: 會計防誤觸彈窗、發票防重與 PDF 嚴格半形化 (Accounting & Safety: 會計二階確認彈窗消滅 Chrome 對話框、進項發票防重登記、全域 PDF 半形正規化) - 已驗收 (5/5 PASS)
+
+#### [x] 系統易用性與履約深度收斂迭代 (Bug Fixes 0923) - 已驗收 (100% 完成)
+- [x] **Batch 1**: 體驗優化、商機導流與報表業務歸位 (Bug 1, 2, 3, 6: 報價單解除2項限制動態增刪、CRM 推進滾動跳底修復與結案區歷史折疊收合、轉單跳轉高亮脈衝聚焦、庫存盤點底冊 Excel 移至庫存區 /inventory) - 已驗收 (4/4 PASS)
+- [x] **Batch 2**: 核心履約架構與拆批單據閉環 (Bug 4, 5: 拆批出貨支援選擇出貨倉庫、跨倉調撥扣庫與虛擬鎖庫一致性核銷、100x150 普通出貨單支援多批連續分頁列印) - 已驗收 (3/3 PASS, 全系統 165/165 PASS)
+
+#### [x] 高層級名稱優先呈現與視覺降噪迭代 (Iteration 0924)
+> 規格詳細定義：[`iteration-0924-high-level-name.md`](file:///d:/3dollar_erp/iteration-0924-high-level-name.md)
+- [x] **Batch 1**: 庫存與營運儀表板高層級名稱翻轉 (Inventory & Dashboard: 低存量卡片品名大字置頂與 SKU 弱化標籤化、庫存總覽表格與行切片品名優先於品號) - 已驗收 (3/3 PASS)
+- [x] **Batch 2**: 採購中心表單與單據明細名稱翻轉 (Procurement: 開單下拉選單「品名 (SKU) - 目前成本」、表頭正名「採購物料 (品名 / SKU)」、採購單列品名粗體優先、驗收入庫與 BOM 比價清冊品名優先) - 已驗收 (4/4 PASS)
+- [x] **Batch 3**: 銷售訂單與履約彈窗名稱翻轉 (Sales Orders & Modals: 訂單表頭客戶名稱、出貨確認/拆批/出貨歷程彈窗預解析 View DTO 繁中品名與客戶名稱) - 已驗收 (5/5 PASS)
+- [x] **Batch 4**: 外部通路、報價單與會計名稱翻轉 (LINE Bot, Documents & Accounting: LINE Flex 卡片品名優先、報價單文件表格正名、會計帳齡表客戶名稱顯著化) - 已驗收 (4/4 PASS)
+- [x] **Playwright E2E**: 高層級名稱翻轉 Headed 瀏覽器端到端 UI 全自動驗收 (4大情境全量涵蓋) - 已驗收 (1/1 PASS)
+
 ---
 
 ## 驗收日誌 (Verification Log)
 
 | 時間戳記 | 階段 / 任務 | 驗收內容與成果 | 狀態 |
-| :--- | :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- | :--- |
 | 2026-09-14 | 初始化 | 完成專案 Roadmap 與 Living SSOT 狀態追蹤機制建置 | PASS |
 | 2026-09-14 | 版本控管 | 初始化 Git 儲存庫與配置多語言環境 .gitignore | PASS |
 | 2026-09-14 | Day 1 (Task 1.1 - 1.4) | 完成 Modular Monolith 骨架、SQLite ANSI Schema、AST 架構邊界守護與自動化測試 (5/5 PASS) | PASS |
@@ -131,6 +167,42 @@
 | 2026-09-20 | 架構防禦 (發票與應收 1:1 約束解除) | 完成 schema.sql、migrations 001 及實體 erp.db 重建，解除 invoices.order_id 與 accounts_receivable.order_id 之 UNIQUE 約束並補齊索引，新增多單據資料庫測試 test_invoices_and_ar_allow_multiple_per_order，單元與架構邊界 0 違規全數 PASS | PASS |
 | 2026-09-21 | 滿血版第 1 批 (使用者全功能真機手動驗收) | 使用者手動完成 1:N 拆批出貨、超額防呆、A4 標籤直向預覽適配、出貨歷程時間戳記展示、全域彈窗容器跨頁強化全面驗收通過，全系統 102/102 測試通過，宣告滿血版第 1 批正式交付完工 | PASS |
 | 2026-09-21 | 核心引擎更名 (Dinkoko ➔ Dura ERP) | 貫徹「不使用模仿對象真實名字」原則，全面重命名核心引擎為 Dura ERP。完成 AGENTS.md、ROADMAP.md、STATUS.md、README.md、FastAPI Swagger OpenAPI 描述、LineBotService 與核心註釋共 8 處同步更新，修正跨文件跳轉錨點；全代碼庫全文搜尋 0 殘留，架構邊界 0 違規，全量 79/79 單元測試全數通過 | PASS |
+| 2026-09-21 | 模組更名 (AI 檔案自動化 ➔ 檔案自動化) | 完成側邊欄導覽 (base.html)、頁面標題與主標題 (ai_tools.html)、Web 路由 (routes.py)、測試套件 (test_ai_wrapper_web.py, test_playwright_batch1.py, test_playwright_day6.py, test_playwright_day7_e2e.py) 與 README.md 全面對齊更名為「檔案自動化」，架構邊界 0 違規，全量 79/79 單元測試全數通過 | PASS |
+| 2026-09-21 | 採購進貨 Web 垂直切片 (/procurement) | 完成前端採購開單 (DRAFT)、確認下訂 (SUBMITTED)、驗收入庫 (GRN / RECEIVED)、移動平均成本加權重算、雙記帳庫存流水與會計應付帳款 (AP) 自動立帳，側邊欄與儀表板低庫存一鍵補貨串接，新增 test_procurement_web.py (6/6 PASS)，全系統 85/85 測試與架構邊界 0 違規全數通過 | PASS |
+| 2026-09-21 | 採購模組 Headed Playwright UI 全功能端到端驗收 | 依據使用者明確指令實施 Headed 模式（headless=False, slow_mo=500ms）真實瀏覽器彈窗 7 大場景端到端驗收（首頁低庫存快捷跳轉、動態物料增刪、表單防呆、多品項開單、下訂 HTMX 局部抽換、入庫彈窗、雙倉庫存流水增加、移動平均成本重算與會計 AP 自動立帳），產出 6 張驗收截圖，test_playwright_procurement.py 1/1 PASS，全系統 85/85 測試與架構邊界 0 違規全數通過 | PASS |
+| 2026-09-22 | 業務整併與抽象層 (第 1 階段) | 完成發票與貨運單雙抽象層 (ShippingCarrierPort)、CRM Lead 多品項計價 (crm_deal_items)、BOM 與財務報表業務歸位 (Layer 1/2)，通過架構防護與全套自動化測試 (111/111 PASS)，Headed Playwright 測試 4/4 PASS | PASS |
+| 2026-09-22 | 業務整併與前端垂直切片 (第 2 階段) | 完成採購進貨 BOM 解析比價與一鍵依供應商分割下單、儀表板低存量警報預填、多倉名稱與低量一鍵下單、會計 4合1 報表中心與 MathJax 公式、CRM Lead 品項計價與轉報價單繼承；全套單元測試 116/116 PASS，Headed Playwright 測試 5/5 PASS | PASS |
+| 2026-09-22 | 檔案自動化介面收斂 | 移除檔案自動化 (/ai/tools) 中已整併至採購與會計之 BOM 比價與 4合1 報表頁籤，轉為專注之電子發票向量抽取與 AP 建立工作台並附導流說明；test_ai_wrapper_web (7/7 PASS) 與 Headed Playwright 全數通過 | PASS |
+| 2026-09-22 | 無摩擦防誤觸與撤回 (Phase 2 多倉調撥切片) | 完成多倉調撥立即執行與紅字反向沖銷 (revert_transfer)、HTMX 三重目標連動 (庫存表/流水表/Toast OOB)、防重複撤回與目的倉可用存量校驗，新增 test_inventory_undo_web.py，全專案 129/129 測試與架構防護 0 違規全數通過 | PASS |
+| 2026-09-22 | 無摩擦防誤觸與撤回 (Phase 3 全系統覆蓋) | 完成採購 (PO Draft/Submit Undo)、訂單 (Confirm Undo/虛擬鎖庫釋放/出貨確認彈窗)、會計 (手動傳票紅字反向沖銷 REV-JE-xxx)、CRM (商機草稿 Undo/贏單轉單確認彈窗)；全套單元與整合測試 138/138 PASS，架構邊界 0 違規 | PASS |
+| 2026-09-22 | 無摩擦防誤觸與撤回 (Playwright Headed 視窗端到端全量驗收) | 實施 Headed 模式（headless=False, slow_mo=300ms）真實瀏覽器彈窗，全面端到端驗收 7 大情境（Toast 懸停/倒數/手動關閉、多倉調撥撤回與流水復原、採購草稿撤銷/下訂撤回/入庫防呆確認、訂單鎖庫撤回/出貨不可逆確認彈窗/發票開立無撤回、手動會計傳票 REV- 反向沖銷與借貸平衡、CRM 商機建立撤回/贏單轉 ERP 訂單確認彈窗、SQLite 唯增帳本不可竄改與全模組無中斷導覽），修復 HTMX 跨表解析與 templateFragments，test_playwright_undo_comprehensive.py 1/1 PASS，check_boundaries.py 0 違規 | PASS |
+| 2026-09-22 | 體驗優化迭代 (Batch 1 純前端微互動與字串精簡) | 完成多倉低量按鈕合併 (⚠️ 低於安全量 • 一鍵下單 →)、調撥雙倉即時互斥與自動對調 Vanilla JS、商機預估物料明細全面改為選填與數量歸 1、報價單預設數量歸 1、出貨單/A4出貨單正名、清除「原廠供應商」寫死字串；測試套件更新並通過 (138/138 PASS)，check_boundaries.py 0 違規 | PASS |
+| 2026-09-22 | 體驗優化迭代 (Batch 1 Headed Playwright E2E 驗收) | 實施 Headed 模式真實 Chromium 視窗全量驗收 5 大情境：庫存低量合併按鈕無原廠供應商字串、雙倉調撥互斥與自動對調 (Auto-Swap)、CRM 商機物料選填與自訂總額、報價單項次 1 & 2 預設數量重設為 1、訂單與出貨單名詞正名 (`🏷️ 出貨單`/`📄 A4 出貨單`) 與彈窗校驗，test_playwright_iteration0922_batch1.py 5/5 PASS | PASS |
+| 2026-09-22 | 體驗優化迭代 (Batch 2 CRM 轉單明細繼承與文件 PDF 半形化) | 完成贏單轉 ERP 彈窗優先繼承報價單物料清冊、小計與單號展示，消除「無特定物料明細」Bug；PyMuPDF/DOCX 英數符號半形化與 helv 字型收斂；單元與整合測試 (140/140 PASS) 與 Headed Playwright E2E 測試 (test_playwright_iteration0922_batch2.py 1/1 PASS)，check_boundaries 0 違規 | PASS |
+| 2026-09-22 | 體驗優化迭代 (Batch 3 訂單出貨倉與採購目標倉多倉流轉架構) | 完成 sales_orders 與 purchase_orders 之 warehouse_id 欄位擴充與領域模型/服務改裝、採購指定進貨倉開單與驗收彈窗預設、CRM 贏單轉單指定出貨倉、訂單鎖庫/一鍵出貨/拆批出貨依指定倉庫流轉扣庫，多倉庫存隔離驗證；全套單元與整合測試 (142/142 PASS)、Headed Playwright E2E 測試 (test_playwright_iteration0922_batch3.py PASS)、check_boundaries 0 違規 | PASS |
+| 2026-09-22 | 體驗優化迭代 (Batch 4 全域通知統一與撤回機制完備) | 完成 CRM 商機階段推進 Toast OOB 與階段撤回 (/crm/deals/{id}/stage/undo)、報價單建立 Toast OOB 與報價單撤回 (/crm/quotes/{id}/undo)、客戶建立/更新 Toast OOB 統一；完成採購驗收入庫紅字退庫沖銷 (revert_goods_receipt)、庫存負數防呆、移動平均成本還原、會計傳票反向沖銷與 AP 註銷；徹底消滅 crm.html 與 procurement.html 舊版靜態綠框；單元與整合測試全數通過 (116/116 PASS)，check_boundaries.py 0 違規 | PASS |
+| 2026-09-22 | 體驗優化迭代 (Batch 4 Headed Playwright E2E 驗收) | 實施 Headed 模式真實 Chromium 視窗全量驗收 7 大情境：CRM 商機階段推進與 Toast 撤回回到 LEAD、報價單建立與 Toast 撤回報價單回到 DISCOVERY、採購驗收入庫與 Toast 撤回入庫回到待到貨、負數紅字庫存流水沖銷、會計 AP 註銷與傳票 REVERSAL 沖銷、/crm 與 /procurement 100% 無舊版靜態綠框全由 #toast-container 掌管，test_playwright_iteration0922_batch4.py 7/7 PASS | PASS |
+| 2026-09-23 | Iteration 0923 (Batch 1 純前端微互動、報表對齊與 Toast 多行自適應) | 完成報價單 Modal State 乾淨重置 (form.reset)、庫存狀態按鈕精簡為「⚠️ 低於安全量」、財務報表中心 4 方塊 1:1 對齊 Excel 4 頁籤並升級字級排版、Toast 解除 truncate 改為 break-words 多行自適應；新增 test_iteration0923_batch1.py (4/4 PASS)，全系統 116/116 PASS，check_boundaries 0 違規 | PASS |
+| 2026-09-23 | Iteration 0923 (Batch 2 訂單客戶辨識、CRM 贏單自動鎖庫與 BOM 批次撤回) | 完成 CRM 贏單自動調用 confirm_order 鎖定虛擬庫存（落實下單即鎖庫）、OrderRowDTO 關聯 crm_contacts 顯示真實公司名 (CUST-xxxx)、BOM 分割自動建立 PO 支援一鍵撤回 (/procurement/bom/create-pos/undo)；新增 test_iteration0923_batch2.py (3/3 PASS)，全系統 123/123 PASS，check_boundaries 0 違規 | PASS |
+| 2026-09-23 | Iteration 0923 (Batch 3 會計防誤觸彈窗、發票防重與 PDF 嚴格半形化) | 完成會計 AR/AP 沖銷 Tailwind 二階確認彈窗 (消滅 Chrome 原生對話框)、指定資金帳戶 (1101/1102) 拋轉傳票、進項發票 invoice_number 防重查驗阻斷、PDF 向量文字全域半形化 (to_half_width)；新增 test_iteration0923_batch3.py (5/5 PASS)，全系統 128/128 PASS，check_boundaries 0 違規 | PASS |
+| 2026-09-23 | Iteration 0923 (Playwright Headed UI 全量端到端驗收) | 依指令啟動 Headed 模式（headless=False, slow_mo=300ms）真實視窗全量驗收 3 大批次 9 大場景：報價單 Modal State 乾淨重置 (0 殘留)、低庫存按鈕精簡 ('⚠️ 低於安全量')、4合1 財務報表 1:1 Sheet 對齊、CRM 贏單自動 CONFIRMED 鎖庫、訂單清單公司名稱 (CUST-xxxx) 呈現、BOM 分割開單批次撤回、會計 AR/AP 沖銷二階 Tailwind 系統彈窗 (消滅 Chrome confirm) 與 1102 銀行存款入帳、進項發票防重複註冊 (ALREADY_RECORDED 按鈕禁用)；test_playwright_iteration0923.py 全數 PASS，check_boundaries.py 0 違規 | PASS |
+| 2026-09-23 | Bug Fixes 0923 (Batch 1 體驗優化與報表歸位) | 完成報價單動態增刪品項 (解除2項限制)、CRM 推進滾動跳底修復與結案折疊收合、轉單目標行高亮脈衝與平滑滾動 (/orders?highlight=)、庫存盤點底冊 Excel 匯出搬移至 /inventory，全系統 162/162 單元與整合測試通過，check_boundaries 0 違規 | PASS |
+| 2026-09-23 | Bug Fixes 0923 (Batch 2 拆批多倉與出貨單連印) | 完成拆批出貨彈窗倉庫下拉選單 (partial_ship_modal.html)、跨倉拆批扣庫與虛擬鎖庫一致性核銷 (fulfill_stock_lock)、100x150 普通出貨單支援多批連續分頁列印 (generate_shipping_labels_pdf)，新增 test_batch2_split_shipping.py (3/3 PASS)，全系統 165/165 PASS，check_boundaries 0 違規 | PASS |
+| 2026-09-23 | 系統易用性與履約收斂 (Playwright Headed UI 6大情境全量驗收) | 依據 iteration-0923-1455-verification.md 啟動 Headed 模式（headless=False, slow_mo=350ms）真實 Chromium 視窗全量驗收 6 大情境：1. 報價單動態增刪 3+ 品項/垃圾桶刪除/動態試算/推進 PROPOSAL/DOCX 與 PDF 產出；2. CRM 平穩滾動/WON 與 LOST 手風琴抽屜與 max-h-[800px]；3. 贏單轉單 SO-xxxx ➜ 導航平滑滾動與 Amber Ring 光暈脈衝聚焦；4. 拆批出貨指定 WH-STORE/跨倉扣庫/歷程出貨倉標註/WH-MAIN 鎖庫同步釋放；5. 拆兩批出貨之 100x150 普通出貨單連續 2 頁列印與單批單頁列印；6. 庫存頁匯出盤點底冊 Excel (.xlsx) 與會計報表中心收斂為 3 大純財務報表；test_playwright_iteration0923_1455.py 全數 PASS | PASS |
+| 2026-09-23 | 前端測試性規範與測試合約架構落地 | 完成全系統核心 HTML/Jinja2 樣板 data-testid 規格化埋設、建立 tests/ui_manifest.yaml 元件清冊 SSOT、實作 tests/test_ui_manifest_contract.py 自動化合約適應度函式 (3/3 PASS)、開發 scripts/dump_a11y_tree.py Playwright 極速無障礙與 ARIA 樹探勘工具，架構邊界 0 違規全數 PASS | PASS |
+| 2026-09-24 | BOM 導入轉採購單防呆與四級成本重構 | 完成 BOM 自帶供應商/單價解析 (BomExcelParser)、四級成本回退鏈 (BomComparisonService.compare_bom: 歷史最低價 ➔ BOM自帶 ➔ 主檔標準成本 ➔ None待詢價)、消除 0 元估算扭曲；採購分割開單剛性過濾未指定廠商與單價為 0 品項 (create_pos_from_bom_endpoint)、全無效拋 400 阻擋、部分有效開單並於 Toast 回報排除筆數；UI 標註待詢價與開單狀態；新增單元與整合測試，全系統 171/171 PASS，架構邊界 0 違規 | PASS |
+| 2026-09-24 | 測試架構物理分流與 Playwright 隔離硬性防呆 | 完成 tests/ 物理隔離分流（tests/unit/ 42 檔與 tests/e2e/ 13 檔）、拆分 tests/e2e/conftest.py 解除全域 Playwright 模組載入污染、配置 pytest.ini (testpaths=tests/unit, norecursedirs=e2e, pythonpath=.)，bare pytest 預設僅執行極速單元測試 (171/171 PASS 耗時數秒)，指定 pytest tests/e2e 才收集並啟動真實瀏覽器 (13/13 PASS)，check_boundaries 0 違規 | PASS |
+| 2026-09-24 | BOM 歷史最優報價過濾修復 (排除無效佔位廠商與 0 元紀錄) | 修復 BomComparisonService.get_supplier_quotes_for_sku 歷史報價查詢：加入 poi.unit_cost > 0、排除佔位名稱 ('未指定供應商' / None / 空白) 與已取消採購單 (po.status != 'CANCELLED')；取消資料庫歷史殘留之 6 張未指定供應商佔位草稿單；新增 test_historical_quotes_filter_zero_cost_and_placeholder_suppliers (172/172 PASS)，確認新入庫「台科電子」成功匹配為最優推薦 | PASS |
+| 2026-09-24 | 分倉安全存量架構與多倉行內編輯 (Per-Warehouse Safety Stock) | 建立 warehouse_stock_levels 表與 Alembic 遷移 (002)，解耦 products.safety_stock 全域單一數值；調撥與採購驗收首次進倉預設安全量 10 與自訂設定支援；多倉庫存頁 (/inventory) 支援 HTMX 零構建行內點擊編輯與即時 OOB 狀態標籤刷新；排程 scan_low_safety_stock 消除未配貨分倉 CROSS JOIN 虛警；新增 test_warehouse_safety_stock.py (6/6 PASS)，全系統 178/178 PASS，架構邊界 0 違規 | PASS |
+| 2026-09-24 | 體驗優化迭代 (Batch 1 庫存與儀表板名稱優先翻轉) | 完成 dashboard.html 低存量卡片品名大字置頂與 SKU 弱化標籤化、近期訂單表頭正名為「客戶名稱 / 下單時間」、stock_table.html 與 stock_row.html 欄位排版翻轉為商品名稱優先於品號 (SKU)；新增 test_iteration0924_batch1.py (3/3 PASS)，全系統 181/181 PASS，架構邊界 0 違規 | PASS |
+| 2026-09-24 | 體驗優化迭代 (Batch 2 採購中心名稱優先翻轉) | 完成 procurement.html 開單物料選項改為「品名 (SKU) - 目前成本」、表頭正名為「採購物料 (品名 / SKU)」、po_row.html 物料列品名加粗在前且 SKU 弱化標籤置於括號、receive_po_modal.html 入庫彈窗與 procurement_bom_result.html BOM 比價表品名優先；新增 test_iteration0924_batch2.py (4/4 PASS)，全系統 185/185 PASS，check_boundaries 0 違規 | PASS |
+| 2026-09-24 | 體驗優化迭代 (Batch 3 銷售訂單與履約彈窗名稱優先翻轉) | 完成 orders.html 表頭正名為「客戶名稱 / 下單時間」、ship_confirm_modal.html 與 partial_ship_modal.html 抬頭顯示「客戶：客戶名稱 (ID)」及物料明細「商品品名 / SKU」品名加粗在前、deliveries_modal.html 表頭正名為「商品品名 (SKU)」與歷程物料品名優先；新增 test_iteration0924_batch3.py (5/5 PASS)，全系統 190/190 PASS，check_boundaries 0 違規 | PASS |
+| 2026-09-24 | 體驗優化迭代 (Batch 4 外部通路、報價單與會計名稱翻轉) | 完成 LINE Bot 收據卡與查單卡優先顯示中文品名、QuoteDocumentEngine Word 與 PDF 報價單明細表頭正名為「商品名稱 / 規格料號 (SKU)」且品名欄位優先、accounting.html AR 與 AP 帳齡表將客戶/廠商名稱前置並粗體強化；新增 test_iteration0924_batch4.py (4/4 PASS)，全系統 194/194 PASS，check_boundaries 0 違規 | PASS |
+| 2026-09-24 | 高層級名稱翻轉 (Playwright Headed UI 4大情境全量驗收) | 依據 iteration-0924-high-level-name.md 啟動 Headed 模式（headless=False, slow_mo=300ms）真實視窗端到端全量驗收 4 大情境：1. 儀表板低存量品名粗體大字置頂與 SKU 弱化標籤化、近期訂單表頭客戶名稱、多倉庫存總覽表格欄位順序商品名稱優先於品號；2. 採購開單表頭正名與物料選單「品名 (SKU) - 成本」、採購單列品名粗體在前、驗收入庫彈窗與 BOM 比價結果品名優先；3. 訂單清單客戶名稱 (CUST-xxxx)、一鍵出貨確認彈窗、拆批出貨彈窗與出貨單歷程彈窗全數預解析中文品名與客戶名稱；4. 會計 AR/AP 帳齡表客戶/廠商名稱排於單號之前並加粗、CRM 報價單 DOCX 與 PDF 欄位排版正名「商品名稱」在前、LINE Bot 收據與查單卡優先顯示中文品名；新增 test_playwright_iteration0924.py (1/1 PASS)，check_boundaries 0 違規 | PASS |
+
+
+
+
 
 
 

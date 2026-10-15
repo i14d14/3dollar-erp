@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="htmx-config" content='{"useTemplateFragments": true}'>
   <title>{% block title %}3Dollar ERP 管理後台{% endblock %}</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -10,10 +11,15 @@
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script>
     document.addEventListener('htmx:beforeSwap', function(evt) {
-      // 2xx (成功完成): 自動清理過往殘留之錯誤通知橫幅
+      // 2xx (成功完成):
       if (evt.detail.xhr.status >= 200 && evt.detail.xhr.status < 300) {
         const toast = document.getElementById('toast-container');
-        if (toast) toast.innerHTML = '';
+        // 若回應本身不包含 OOB toast，且目前畫面上殘留的是錯誤橫幅，才自動清理錯誤
+        // 嚴格保留正在倒數進行中的成功/撤回 TTL Toast
+        if (toast && !evt.detail.xhr.responseText.includes('id="toast-container"')) {
+          const errorCard = toast.querySelector('.bg-rose-50');
+          if (errorCard) toast.innerHTML = '';
+        }
       }
       // 4xx (業務預期防呆): 允許處理，配合後端 OOB 放入通知區
       else if (evt.detail.xhr.status >= 400 && evt.detail.xhr.status < 500) {
@@ -26,21 +32,112 @@
         const toast = document.getElementById('toast-container');
         if (toast) {
           toast.innerHTML = `
-            <div class="p-3 my-2 text-xs text-rose-800 bg-rose-50 border border-rose-300 rounded-lg flex items-center justify-between shadow-sm">
-              <div class="flex items-center gap-2">
-                <span class="text-rose-600 font-bold text-sm">🚨</span>
-                <span class="font-medium">系統內部發生異常，已自動阻斷原始報錯並保全畫面，請稍後重試。</span>
+            <div class="toast-card relative overflow-hidden rounded-xl shadow-xl border border-rose-300 bg-rose-50 text-rose-950 p-3.5 my-2 text-xs flex items-center justify-between gap-3" data-ttl="8000">
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <span class="text-base font-bold flex-shrink-0">🚨</span>
+                <span class="font-medium leading-snug">系統內部發生異常，已自動阻斷原始報錯並保全畫面，請稍後重試。</span>
               </div>
-              <button onclick="document.getElementById('toast-container').innerHTML=''" class="text-rose-400 hover:text-rose-700 font-bold ml-2 text-base leading-none">&times;</button>
+              <button type="button" data-toast-dismiss title="關閉通知" class="text-rose-400 hover:text-rose-700 font-bold text-base leading-none px-1.5 py-0.5 rounded transition">&times;</button>
+              <div class="absolute bottom-0 left-0 right-0 h-1 bg-rose-200/60 overflow-hidden pointer-events-none">
+                <div class="toast-progress-bar h-full bg-rose-500" style="--toast-ttl: 8s;"></div>
+              </div>
             </div>`;
         }
       }
     });
+
+    // Toast Notification Lifecycle & Hover Pause Controller
+    function initToastController() {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      function bindToastCard(card) {
+        if (card.dataset.toastBound === 'true') return;
+        card.dataset.toastBound = 'true';
+
+        const ttlMs = parseInt(card.dataset.ttl || '6000', 10);
+        if (!ttlMs || ttlMs <= 0) return;
+
+        let remaining = ttlMs;
+        let startTimestamp = Date.now();
+        let timerId = null;
+
+        function dismiss() {
+          card.classList.add('opacity-0', '-translate-y-2');
+          setTimeout(function() {
+            if (card.parentElement) {
+              card.remove();
+              if (container.children.length === 0) {
+                container.innerHTML = '';
+              }
+            }
+          }, 250);
+        }
+
+        function resumeTimer() {
+          startTimestamp = Date.now();
+          timerId = setTimeout(dismiss, remaining);
+          const bar = card.querySelector('.toast-progress-bar');
+          if (bar) bar.style.animationPlayState = 'running';
+        }
+
+        function pauseTimer() {
+          if (timerId) clearTimeout(timerId);
+          const elapsed = Date.now() - startTimestamp;
+          remaining = Math.max(0, remaining - elapsed);
+          const bar = card.querySelector('.toast-progress-bar');
+          if (bar) bar.style.animationPlayState = 'paused';
+        }
+
+        card.addEventListener('mouseenter', pauseTimer);
+        card.addEventListener('mouseleave', resumeTimer);
+
+        const dismissBtn = card.querySelector('[data-toast-dismiss]');
+        if (dismissBtn) {
+          dismissBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (timerId) clearTimeout(timerId);
+            dismiss();
+          });
+        }
+
+        // Start initial countdown
+        resumeTimer();
+      }
+
+      // Automatically bind newly swapped toast cards
+      const observer = new MutationObserver(function() {
+        const cards = container.querySelectorAll('.toast-card');
+        cards.forEach(bindToastCard);
+      });
+      observer.observe(container, { childList: true, subtree: true });
+
+      // Scan existing cards
+      container.querySelectorAll('.toast-card').forEach(bindToastCard);
+    }
+
+    document.addEventListener('DOMContentLoaded', initToastController);
+    document.addEventListener('htmx:afterSettle', initToastController);
   </script>
   <style>
     .htmx-indicator { display: none; }
     .htmx-request .htmx-indicator { display: inline-block; }
     .htmx-request.htmx-indicator { display: inline-block; }
+
+    @keyframes toast-progress {
+      from { width: 100%; }
+      to { width: 0%; }
+    }
+    .toast-progress-bar {
+      animation: toast-progress var(--toast-ttl, 6s) linear forwards;
+    }
+    .toast-card:hover .toast-progress-bar {
+      animation-play-state: paused;
+    }
+    .toast-card {
+      transition: opacity 250ms cubic-bezier(0.4, 0, 0.2, 1), transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
 <body class="h-full flex flex-col md:flex-row font-sans text-slate-800 antialiased">
@@ -60,34 +157,39 @@
 
     <!-- Navigation Menu -->
     <nav class="flex-1 px-3 py-4 space-y-1">
-      <a href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'dashboard' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+      <a href="/" data-testid="nav-dashboard" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'dashboard' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
         營運儀表板
       </a>
 
-      <a href="/orders" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'orders' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+      <a href="/orders" data-testid="nav-orders" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'orders' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
         訂單與出貨作業
       </a>
 
-      <a href="/inventory" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'inventory' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+      <a href="/procurement" data-testid="nav-procurement" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'procurement' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+        <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        採購與進貨作業
+      </a>
+
+      <a href="/inventory" data-testid="nav-inventory" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'inventory' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
         多倉庫存與流水
       </a>
 
-      <a href="/accounting" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'accounting' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+      <a href="/accounting" data-testid="nav-accounting" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'accounting' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         探吉 會計記帳
       </a>
 
-      <a href="/crm" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'crm' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+      <a href="/crm" data-testid="nav-crm" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'crm' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
         哩來 CRM 商機
       </a>
 
-      <a href="/ai/tools" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'ai_tools' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+      <a href="/ai/tools" data-testid="nav-ai-tools" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if active_page == 'ai_tools' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
         <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        AI 檔案自動化
+        檔案自動化
       </a>
     </nav>
 
@@ -115,10 +217,11 @@
     </header>
 
     <!-- Global Floating Toast Notification Layer (Above Modals & Headers) -->
-    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-xl px-4 pointer-events-auto empty:hidden transition-all duration-300"></div>
+    <div id="toast-container" data-testid="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-xl px-4 pointer-events-auto empty:hidden transition-all duration-300"></div>
 
-    <!-- Global Modal Container for Orders, Deliveries & Labels -->
+    <!-- Global Modal Container for Orders, Deliveries, Procurement & Labels -->
     <div id="order-modal-container"></div>
+    <div id="modal-container"></div>
 
     <!-- Page Body -->
     <div class="p-6 flex-1">

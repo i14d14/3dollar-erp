@@ -20,6 +20,17 @@ CREATE TABLE IF NOT EXISTS products (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 1.1 Warehouse Stock Levels (Per-Warehouse Safety Stock)
+CREATE TABLE IF NOT EXISTS warehouse_stock_levels (
+    warehouse_id TEXT NOT NULL REFERENCES warehouses(warehouse_id),
+    sku TEXT NOT NULL REFERENCES products(sku),
+    safety_stock INTEGER NOT NULL DEFAULT 10,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (warehouse_id, sku)
+);
+CREATE INDEX IF NOT EXISTS idx_wh_stock_levels_sku ON warehouse_stock_levels(sku);
+
 -- 2. Stock Ledger (Append-Only Double Entry Ledger)
 CREATE TABLE IF NOT EXISTS stock_ledger (
     ledger_id TEXT PRIMARY KEY,
@@ -49,6 +60,7 @@ CREATE TABLE IF NOT EXISTS stock_locks (
 CREATE TABLE IF NOT EXISTS purchase_orders (
     po_id TEXT PRIMARY KEY,
     supplier_name TEXT NOT NULL,
+    warehouse_id TEXT NOT NULL DEFAULT 'WH-MAIN',
     status TEXT NOT NULL DEFAULT 'DRAFT', -- 'DRAFT', 'SUBMITTED', 'RECEIVED', 'CANCELLED'
     total_amount NUMERIC NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -74,6 +86,7 @@ CREATE TABLE IF NOT EXISTS goods_receipt_notes (
 CREATE TABLE IF NOT EXISTS sales_orders (
     order_id TEXT PRIMARY KEY,
     customer_id TEXT NOT NULL,
+    warehouse_id TEXT NOT NULL DEFAULT 'WH-MAIN',
     channel TEXT NOT NULL DEFAULT 'DIRECT', -- 'DIRECT', 'LINE', 'CRM'
     status TEXT NOT NULL DEFAULT 'DRAFT',   -- 'DRAFT', 'CONFIRMED', 'SHIPPED', 'COMPLETED', 'CANCELLED'
     total_amount NUMERIC NOT NULL DEFAULT 0,
@@ -218,6 +231,17 @@ CREATE TABLE IF NOT EXISTS crm_deals (
     converted_order_id TEXT REFERENCES sales_orders(order_id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS crm_deal_items (
+    deal_item_id TEXT PRIMARY KEY,
+    deal_id TEXT NOT NULL REFERENCES crm_deals(deal_id) ON DELETE CASCADE,
+    sku TEXT NOT NULL REFERENCES products(sku),
+    qty NUMERIC NOT NULL,
+    unit_price NUMERIC NOT NULL,
+    subtotal NUMERIC NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_crm_deal_items_deal_id ON crm_deal_items(deal_id);
 
 CREATE TABLE IF NOT EXISTS crm_quotes (
     quote_id TEXT PRIMARY KEY,

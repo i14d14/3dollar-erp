@@ -79,21 +79,28 @@
             <td class="py-3 px-4 text-right font-mono text-slate-500">${{ "{:,.0f}".format(item.standard_cost) }}</td>
             
             <td class="py-3 px-4 text-right font-mono font-bold text-emerald-600">
-              {% if item.lowest_quote %}
+              {% if item.effective_cost is not none %}
+              ${{ "{:,.0f}".format(item.effective_cost) }}
+              {% elif item.lowest_quote %}
               ${{ "{:,.0f}".format(item.lowest_quote.unit_cost) }}
               {% else %}
-              <span class="text-slate-400 font-normal">--</span>
+              <span class="text-amber-500 font-normal">待詢價</span>
               {% endif %}
             </td>
 
             <td class="py-3 px-4">
-              {% if item.lowest_quote %}
+              {% if item.effective_supplier %}
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                {{ item.effective_supplier }}
+              </span>
+              {% elif item.lowest_quote %}
               <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 {{ item.lowest_quote.supplier_name }}
               </span>
               {% else %}
-              <span class="text-slate-400">無歷史紀錄 (無匹配供應商)</span>
+              <span class="text-amber-600 font-medium">無匹配廠商 (待詢價)</span>
               {% endif %}
             </td>
 
@@ -106,7 +113,11 @@
             </td>
 
             <td class="py-3 px-4 text-right font-mono font-bold text-slate-900">
+              {% if item.estimated_subtotal_lowest is not none %}
               ${{ "{:,.0f}".format(item.estimated_subtotal_lowest) }}
+              {% else %}
+              <span class="text-slate-400 font-normal">--</span>
+              {% endif %}
             </td>
 
             <td class="py-3 px-4 text-right font-mono font-semibold {% if item.potential_savings > 0 %}text-amber-600 bg-amber-50/50{% else %}text-slate-400{% endif %}">

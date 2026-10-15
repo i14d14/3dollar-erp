@@ -37,6 +37,14 @@ class Contact(DomainModel):
             return clean_v
         return None
 
+class DealItem(DomainModel):
+    deal_item_id: str
+    deal_id: str
+    sku: str
+    qty: Decimal
+    unit_price: Decimal
+    subtotal: Decimal
+
 class Deal(DomainModel):
     deal_id: str
     contact_id: str
@@ -44,6 +52,7 @@ class Deal(DomainModel):
     stage: DealStage = DealStage.LEAD
     expected_amount: Decimal = Decimal("0.0")
     converted_order_id: Optional[str] = None
+    items: List[DealItem] = []
 
 class QuoteItem(DomainModel):
     item_id: str

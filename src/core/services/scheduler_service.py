@@ -40,43 +40,82 @@ class SchedulerService:
         alerts: List[LowStockAlert] = []
 
         with self.db.transaction() as conn:
-            # Query active products with safety_stock > 0
-            prod_rows = conn.execute(
-                "SELECT sku, name, safety_stock FROM products WHERE is_active = 1 AND safety_stock > 0"
-            ).fetchall()
-
+            # Query items configured in warehouse_stock_levels for active warehouses and active products
+            levels_query = """
+                SELECT w.warehouse_id, p.sku, p.name as product_name,
+                       wsl.safety_stock as safety_stock
+                FROM warehouse_stock_levels wsl
+                JOIN warehouses w ON w.warehouse_id = wsl.warehouse_id
+                JOIN products p ON p.sku = wsl.sku
+                WHERE w.is_active = 1 AND p.is_active = 1 AND wsl.safety_stock > 0
+            """
+            params: List[str] = []
             if warehouse_id:
-                wh_rows = conn.execute(
-                    "SELECT warehouse_id FROM warehouses WHERE warehouse_id = ? AND is_active = 1",
-                    (warehouse_id,),
+                levels_query += " AND w.warehouse_id = ?"
+                params.append(warehouse_id)
+            levels_query += " ORDER BY w.warehouse_id, p.sku"
+
+            level_rows = conn.execute(levels_query, tuple(params)).fetchall()
+
+            # If warehouse_stock_levels is globally empty (e.g. isolated legacy unit test), fallback to product catalog
+            total_levels_row = conn.execute("SELECT COUNT(*) as c FROM warehouse_stock_levels").fetchone()
+            is_globally_empty = (not total_levels_row or total_levels_row["c"] == 0)
+
+            if is_globally_empty:
+                prod_rows = conn.execute(
+                    "SELECT sku, name, safety_stock FROM products WHERE is_active = 1 AND safety_stock > 0"
                 ).fetchall()
-            else:
-                wh_rows = conn.execute("SELECT warehouse_id FROM warehouses WHERE is_active = 1").fetchall()
+                if warehouse_id:
+                    wh_rows = conn.execute(
+                        "SELECT warehouse_id FROM warehouses WHERE warehouse_id = ? AND is_active = 1",
+                        (warehouse_id,),
+                    ).fetchall()
+                else:
+                    wh_rows = conn.execute("SELECT warehouse_id FROM warehouses WHERE is_active = 1").fetchall()
 
-            for wh in wh_rows:
-                wh_id = wh["warehouse_id"]
-                for prod in prod_rows:
-                    sku = prod["sku"]
-                    safety = prod["safety_stock"]
-
-                    balance = self.inventory_service.get_stock_balance(wh_id, sku)
-                    locked = self.inventory_service.get_locked_stock(wh_id, sku)
-                    available = balance - locked
-
-                    if available <= Decimal(str(safety)):
-                        shortage = Decimal(str(safety)) - available
-                        alerts.append(
-                            LowStockAlert(
-                                sku=sku,
-                                product_name=prod["name"],
-                                warehouse_id=wh_id,
-                                current_balance=balance,
-                                locked_stock=locked,
-                                available_stock=available,
-                                safety_stock=safety,
-                                shortage=shortage,
+                for wh in wh_rows:
+                    wh_id = wh["warehouse_id"]
+                    for prod in prod_rows:
+                        sku = prod["sku"]
+                        safety = prod["safety_stock"]
+                        balance = self.inventory_service.get_stock_balance(wh_id, sku)
+                        locked = self.inventory_service.get_locked_stock(wh_id, sku)
+                        available = balance - locked
+                        if available <= Decimal(str(safety)):
+                            alerts.append(
+                                LowStockAlert(
+                                    sku=sku,
+                                    product_name=prod["name"],
+                                    warehouse_id=wh_id,
+                                    current_balance=balance,
+                                    locked_stock=locked,
+                                    available_stock=available,
+                                    safety_stock=safety,
+                                    shortage=Decimal(str(safety)) - available,
+                                )
                             )
+                return alerts
+
+            for r in level_rows:
+                wh_id = r["warehouse_id"]
+                sku = r["sku"]
+                safety = int(r["safety_stock"])
+                balance = self.inventory_service.get_stock_balance(wh_id, sku)
+                locked = self.inventory_service.get_locked_stock(wh_id, sku)
+                available = balance - locked
+                if available <= Decimal(str(safety)):
+                    alerts.append(
+                        LowStockAlert(
+                            sku=sku,
+                            product_name=r["product_name"],
+                            warehouse_id=wh_id,
+                            current_balance=balance,
+                            locked_stock=locked,
+                            available_stock=available,
+                            safety_stock=safety,
+                            shortage=Decimal(str(safety)) - available,
                         )
+                    )
 
         return alerts
 

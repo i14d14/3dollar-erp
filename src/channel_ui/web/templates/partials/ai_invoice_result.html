@@ -13,8 +13,10 @@
   <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-900 text-xs">
     <span class="text-xl">⚠️</span>
     <div>
-      <div class="font-bold">可能重複之單據</div>
-      <div class="text-amber-700">系統中已存在同供應商且金額相符之應付帳款單據 ({{ result.existing_ap_id }})，請確認是否重複建檔。</div>
+      <div class="font-bold">發票重複入帳警報 (Duplicate Invoice Alert)</div>
+      <div class="text-amber-700">
+        系統中已存在發票號碼為 <span class="font-mono font-bold">{{ result.extracted.invoice_number }}</span> 之入帳紀錄{% if result.existing_ap_id %}（單據編號：<span class="font-mono font-bold">{{ result.existing_ap_id }}</span>）{% endif %}，嚴禁重複登記入帳！
+      </div>
     </div>
   </div>
   {% elif result.status == 'MATCHED_PO' %}
@@ -138,6 +140,13 @@
         確認無誤後，點擊右方按鈕即可一鍵寫入「探吉會計應付帳款」並自動認列會計傳票。
       </div>
 
+      {% if result.status == 'ALREADY_RECORDED' %}
+      <div class="w-full sm:w-auto flex items-center gap-3">
+        <button type="button" disabled class="w-full sm:w-auto px-6 py-2.5 bg-slate-200 text-slate-500 rounded-xl text-xs font-semibold cursor-not-allowed shadow-none flex items-center justify-center gap-2">
+          <span>⚠️ 已建檔入帳（禁止重複建立）</span>
+        </button>
+      </div>
+      {% else %}
       <form hx-post="/ai/invoice/confirm-ap"
             hx-target="#invoice-result-container"
             hx-indicator="#confirm-loading"
@@ -158,6 +167,7 @@
           ⏳ 正在建立單據與分錄...
         </span>
       </form>
+      {% endif %}
     </div>
 
   </div>

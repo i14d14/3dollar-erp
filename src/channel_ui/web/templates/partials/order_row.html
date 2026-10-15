@@ -1,15 +1,26 @@
-<tr id="order-row-{{ order.order_id }}" class="hover:bg-slate-50 transition-colors border-b border-slate-100 text-sm">
+<tr id="order-row-{{ order.order_id }}" data-testid="row-order" class="hover:bg-slate-50 transition-colors border-b border-slate-100 text-sm">
   <!-- Order ID & Channel -->
   <td class="px-4 py-3 font-mono font-medium text-slate-900">
     <div>{{ order.order_id }}</div>
-    <span class="inline-block mt-0.5 px-2 py-0.5 text-[11px] font-medium rounded bg-slate-100 text-slate-600 border border-slate-200">
-      {{ order.channel }}
-    </span>
+    <div class="flex items-center gap-1 mt-0.5">
+      <span class="inline-block px-2 py-0.5 text-[11px] font-medium rounded bg-slate-100 text-slate-600 border border-slate-200">
+        {{ order.channel }}
+      </span>
+      <span class="inline-block px-1.5 py-0.5 text-[10px] font-semibold rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono">
+        {{ order.warehouse_id or 'WH-MAIN' }}
+      </span>
+    </div>
   </td>
 
   <!-- Customer & Date -->
   <td class="px-4 py-3 text-slate-600">
-    <div class="font-medium text-slate-800">{{ order.customer_id }}</div>
+    <div class="font-medium text-slate-800">
+      {% if order.customer_name and order.customer_name != order.customer_id %}
+        {{ order.customer_name }} <span class="text-xs text-slate-400 font-normal font-mono">({{ order.customer_id }})</span>
+      {% else %}
+        {{ order.customer_id }}
+      {% endif %}
+    </div>
     <div class="text-xs text-slate-400 mt-0.5">{{ order.created_at }}</div>
   </td>
 
@@ -67,6 +78,7 @@
       <!-- Confirm Order Button -->
       {% if order.can_confirm %}
       <button 
+        data-testid="btn-confirm-order"
         hx-post="/orders/{{ order.order_id }}/confirm"
         hx-target="#order-row-{{ order.order_id }}"
         hx-swap="outerHTML"
@@ -78,6 +90,7 @@
       <!-- Ship Buttons -->
       {% if order.can_ship %}
       <button 
+        data-testid="btn-partial-ship"
         hx-get="/orders/{{ order.order_id }}/partial-ship-modal"
         hx-target="#order-modal-container"
         hx-swap="innerHTML"
@@ -85,10 +98,11 @@
         拆批出貨
       </button>
       <button 
-        hx-post="/orders/{{ order.order_id }}/ship"
-        hx-target="#order-row-{{ order.order_id }}"
-        hx-swap="outerHTML"
-        class="px-2.5 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition">
+        data-testid="btn-ship-order"
+        hx-get="/orders/{{ order.order_id }}/ship-modal"
+        hx-target="#order-modal-container"
+        hx-swap="innerHTML"
+        class="px-2.5 py-1.5 text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition cursor-pointer">
         一鍵出貨 (扣庫)
       </button>
       {% endif %}
@@ -96,6 +110,7 @@
       <!-- Issue Invoice Button -->
       {% if order.can_invoice %}
       <button 
+        data-testid="btn-issue-invoice"
         hx-post="/orders/{{ order.order_id }}/invoice"
         hx-target="#order-row-{{ order.order_id }}"
         hx-swap="outerHTML"
@@ -110,8 +125,8 @@
         href="/orders/{{ order.order_id }}/label.pdf" 
         target="_blank"
         class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition shadow-sm"
-        title="列印物流標籤 PDF (100x150mm)">
-        🏷️ 標籤
+        title="列印物流出貨單 PDF (100x150mm)">
+        🏷️ 出貨單
       </a>
       <button 
         type="button"
@@ -119,8 +134,8 @@
         hx-target="#order-modal-container"
         hx-swap="innerHTML"
         class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition shadow-sm cursor-pointer"
-        title="列印多格 A4 標籤貼紙 (2x2，支援起印格位選取)">
-        📄 A4 貼紙
+        title="列印多格 A4 出貨單 (2x2，支援起印格位選取)">
+        📄 A4 出貨單
       </button>
       {% endif %}
 

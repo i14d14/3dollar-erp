@@ -8,6 +8,7 @@ import fitz  # PyMuPDF
 
 from src.core.domain.invoice import Invoice, InvoiceStatus, TaxType
 from src.core.ports.invoice_port import InvoicePort, IssueInvoiceRequest
+from src.shared.text_utils import to_half_width
 
 
 class MockInvoiceProvider(InvoicePort):
@@ -77,50 +78,64 @@ class MockInvoiceProvider(InvoicePort):
         height = 396.85
         page = doc.new_page(width=width, height=height)
 
+        def put_text(point: fitz.Point, text: str, **kwargs):
+            page.insert_text(point, to_half_width(text), **kwargs)
+
         # Draw header
-        page.insert_text(fitz.Point(12, 25), self.seller_name, fontsize=8, fontname="helv")
-        page.insert_text(fitz.Point(12, 42), "電子發票證明聯", fontsize=10, fontname="china-t")
-        page.insert_text(fitz.Point(12, 56), "(MIG 3.2.1)", fontsize=8, fontname="helv")
+        put_text(fitz.Point(12, 25), self.seller_name, fontsize=8, fontname="helv")
+        put_text(fitz.Point(12, 42), "電子發票證明聯", fontsize=10, fontname="china-t")
+        put_text(fitz.Point(12, 56), "(MIG 3.2.1)", fontsize=8, fontname="helv")
 
         # Period & Invoice number
         now = datetime.datetime.now()
         roc_year = now.year - 1911
         period_month = now.month if now.month % 2 == 0 else now.month + 1
         period_str = f"{roc_year:03d}年{period_month - 1:02d}-{period_month:02d}月"
-        page.insert_text(fitz.Point(12, 72), period_str, fontsize=9, fontname="china-t")
-        page.insert_text(fitz.Point(12, 88), invoice.invoice_number, fontsize=11, fontname="helv")
+        put_text(fitz.Point(12, 72), period_str, fontsize=9, fontname="china-t")
+        put_text(fitz.Point(12, 88), invoice.invoice_number, fontsize=11, fontname="helv")
 
         # Separator line
         page.draw_line(fitz.Point(10, 96), fitz.Point(150, 96), color=(0, 0, 0), width=0.8)
 
         # Metadata
-        page.insert_text(fitz.Point(12, 110), f"開立日期: {now.strftime('%Y-%m-%d %H:%M')}", fontsize=7, fontname="china-t")
-        page.insert_text(fitz.Point(12, 124), f"隨機碼: {invoice.random_code}", fontsize=8, fontname="china-t")
-        page.insert_text(fitz.Point(12, 138), f"總計: NT$ {int(invoice.total_amount)}", fontsize=8, fontname="china-t")
+        put_text(fitz.Point(12, 110), "開立日期: ", fontsize=7, fontname="china-t")
+        put_text(fitz.Point(52, 110), now.strftime("%Y-%m-%d %H:%M"), fontsize=7, fontname="helv")
+        put_text(fitz.Point(12, 124), "隨機碼: ", fontsize=8, fontname="china-t")
+        put_text(fitz.Point(46, 124), invoice.random_code, fontsize=8, fontname="helv")
+        put_text(fitz.Point(12, 138), "總計: ", fontsize=8, fontname="china-t")
+        put_text(fitz.Point(38, 138), f"NT$ {int(invoice.total_amount)}", fontsize=8, fontname="helv")
 
-        seller_str = f"賣方: {self.seller_tax_id}"
-        buyer_str = f"買方: {invoice.buyer_tax_id or '個人消費'}"
-        page.insert_text(fitz.Point(12, 152), seller_str, fontsize=8, fontname="china-t")
-        page.insert_text(fitz.Point(12, 166), buyer_str, fontsize=8, fontname="china-t")
+        put_text(fitz.Point(12, 152), "賣方: ", fontsize=8, fontname="china-t")
+        put_text(fitz.Point(38, 152), self.seller_tax_id, fontsize=8, fontname="helv")
+        put_text(fitz.Point(12, 166), "買方: ", fontsize=8, fontname="china-t")
+        if invoice.buyer_tax_id:
+            put_text(fitz.Point(38, 166), invoice.buyer_tax_id, fontsize=8, fontname="helv")
+        else:
+            put_text(fitz.Point(38, 166), "個人消費", fontsize=8, fontname="china-t")
 
         # Mock 1D Barcode Box
         barcode_rect = fitz.Rect(12, 178, 148, 203)
         page.draw_rect(barcode_rect, color=(0, 0, 0), width=0.5)
-        page.insert_text(fitz.Point(20, 194), f"||| {invoice.invoice_number} |||", fontsize=8, fontname="helv")
+        put_text(fitz.Point(20, 194), f"||| {invoice.invoice_number} |||", fontsize=8, fontname="helv")
 
         # Mock Dual QR Codes (Left and Right)
         qr_left = fitz.Rect(12, 215, 72, 275)
         qr_right = fitz.Rect(82, 215, 142, 275)
         page.draw_rect(qr_left, color=(0, 0, 0), width=0.5)
         page.draw_rect(qr_right, color=(0, 0, 0), width=0.5)
-        page.insert_text(fitz.Point(22, 248), "[QR-L]", fontsize=8, fontname="helv")
-        page.insert_text(fitz.Point(92, 248), "[QR-R]", fontsize=8, fontname="helv")
+        put_text(fitz.Point(22, 248), "[QR-L]", fontsize=8, fontname="helv")
+        put_text(fitz.Point(92, 248), "[QR-R]", fontsize=8, fontname="helv")
 
         # Footer notes
         page.draw_line(fitz.Point(10, 290), fitz.Point(150, 290), color=(0, 0, 0), width=0.5)
-        page.insert_text(fitz.Point(12, 308), f"訂單編號: {invoice.order_id}", fontsize=7, fontname="china-t")
-        page.insert_text(fitz.Point(12, 322), "營業人統一編號審驗合格", fontsize=7, fontname="china-t")
+        put_text(fitz.Point(12, 308), "訂單編號: ", fontsize=7, fontname="china-t")
+        put_text(fitz.Point(52, 308), invoice.order_id, fontsize=7, fontname="helv")
+        put_text(fitz.Point(12, 322), "營業人統一編號審驗合格", fontsize=7, fontname="china-t")
 
-        pdf_bytes = doc.tobytes()
+        pdf_bytes = doc.write()
         doc.close()
         return pdf_bytes
+
+
+# Standard standalone alias
+InternalInvoiceProvider = MockInvoiceProvider

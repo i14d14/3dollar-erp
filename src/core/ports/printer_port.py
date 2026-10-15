@@ -20,6 +20,15 @@ class PrinterPort(ABC):
         pass
 
     @abstractmethod
+    def generate_shipping_labels_pdf(
+        self,
+        labels: List[ShippingLabelData],
+        page_format: str = "100x150",
+    ) -> bytes:
+        """Generate logistics shipping labels PDF with multiple pages (one 100x150mm page per label, or multi-page A4)."""
+        pass
+
+    @abstractmethod
     def generate_a4_shipping_labels_pdf(
         self,
         labels: List[ShippingLabelData],

@@ -73,7 +73,7 @@ class AccountingService:
                     f"傳票借貸不平衡！借方總額 ({total_debit}) 不等於貸方總額 ({total_credit})，已禁止存檔 (Double-entry bookkeeping imbalance)"
                 )
 
-            entry_id = f"JE-{uuid.uuid4().hex[:10].upper()}"
+            entry_id = f"REV-{uuid.uuid4().hex[:8].upper()}" if source_event == "REVERSAL" else f"JE-{uuid.uuid4().hex[:10].upper()}"
             conn.execute(
                 """
                 INSERT INTO journal_entries (entry_id, entry_date, source_event, reference_id, description)
@@ -110,6 +110,50 @@ class AccountingService:
             description=description,
             lines=result_lines,
         )
+
+    def reverse_journal_entry(self, entry_id: str, reason: str = "操作員即時撤回") -> JournalEntry:
+        """Create a compensating reversal journal entry (紅字反向沖銷) adhering to GAAP/EAS Append-Only rules."""
+        with self.db.transaction() as conn:
+            e_row = conn.execute(
+                "SELECT entry_id, entry_date, source_event, reference_id, description FROM journal_entries WHERE entry_id = ?",
+                (entry_id,),
+            ).fetchone()
+            if not e_row:
+                raise ValueError(f"查無會計傳票 {entry_id} (Journal entry not found)")
+
+            if e_row["source_event"] == "REVERSAL":
+                raise ValueError(f"無法撤回沖銷傳票 {entry_id}：本身已為沖銷傳票 (Cannot reverse a reversal entry)")
+
+            # Guard against duplicate reversal
+            dup = conn.execute(
+                "SELECT entry_id FROM journal_entries WHERE source_event = 'REVERSAL' AND reference_id = ?",
+                (entry_id,),
+            ).fetchone()
+            if dup:
+                raise ValueError(f"傳票 {entry_id} 已於先前進行紅字沖銷 (沖銷傳票號: {dup['entry_id']})，不可重複撤回")
+
+            line_rows = conn.execute(
+                "SELECT account_code, debit, credit FROM journal_lines WHERE entry_id = ?",
+                (entry_id,),
+            ).fetchall()
+            if not line_rows:
+                raise ValueError(f"傳票 {entry_id} 無有效分錄明細")
+
+            reversal_lines: List[Tuple[str, Decimal, Decimal]] = []
+            for r in line_rows:
+                dr = Decimal(str(r["debit"]))
+                cr = Decimal(str(r["credit"]))
+                # Swapped: original dr becomes cr, original cr becomes dr
+                reversal_lines.append((r["account_code"], cr, dr))
+
+        return self.create_journal_entry(
+            entry_date=datetime.date.today(),
+            source_event="REVERSAL",
+            reference_id=entry_id,
+            description=f"紅字反向沖銷: {e_row['description']} ({reason})",
+            lines=reversal_lines,
+        )
+
 
     def get_journal_entries(self, limit: int = 50) -> List[JournalEntry]:
         """Fetch journal entries ordered by date desc with their lines."""
@@ -490,6 +534,7 @@ class AccountingService:
         ar_id: str,
         amount: Optional[Decimal] = None,
         payment_account: str = "1101",
+        customer_name: Optional[str] = None,
     ) -> JournalEntry:
         """Settle an accounts receivable receipt, update AR status, and record journal entry."""
         with self.db.transaction() as conn:
@@ -518,12 +563,18 @@ class AccountingService:
                 (float(new_paid), new_status, ar_id),
             )
 
+        raw_cust_id = ar_row["customer_id"]
+        if customer_name and customer_name.strip() and customer_name.strip() != raw_cust_id:
+            cust_display = f"{customer_name.strip()} ({raw_cust_id})"
+        else:
+            cust_display = raw_cust_id
+
         # Record balanced journal entry: Dr Cash/Bank, Cr Accounts Receivable
         return self.create_journal_entry(
             entry_date=datetime.date.today(),
             source_event="AR_RECEIPT",
             reference_id=ar_id,
-            description=f"收取客戶 {ar_row['customer_id']} 款項 (訂單 {ar_row['order_id']})",
+            description=f"收取客戶 {cust_display} 款項 (訂單 {ar_row['order_id']})",
             lines=[
                 (payment_account, settle_amount, Decimal("0.0")),
                 ("1144", Decimal("0.0"), settle_amount),

@@ -28,7 +28,7 @@ async def ai_tools_page(request: Request):
         name="ai_tools.html",
         context={
             "active_page": "ai_tools",
-            "page_title": "AI 檔案自動化中心",
+            "page_title": "檔案自動化中心",
         },
     )
 
@@ -198,11 +198,14 @@ async def confirm_invoice_ap(
     )
 
     intake_service = InvoiceIntakeService(db=db)
-    ap_id = intake_service.create_ap_from_invoice(
-        invoice=extracted,
-        po_id=po_id if po_id and po_id.strip() else None,
-        supplier_name=seller_name,
-    )
+    try:
+        ap_id = intake_service.create_ap_from_invoice(
+            invoice=extracted,
+            po_id=po_id if po_id and po_id.strip() else None,
+            supplier_name=seller_name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return HTMLResponse(
         f"""
