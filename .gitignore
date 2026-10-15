@@ -47,6 +47,7 @@ yarn-error.log*
 pnpm-debug.log*
 tmp/
 temp/
+artifacts/
 
 # OS & Editor
 .DS_Store

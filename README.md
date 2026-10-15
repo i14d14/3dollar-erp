@@ -1,3 +1,11 @@
+# 3Dollar ERP
+
+> [!NOTE]
+> **Project Overview & Disclaimer**:
+> This repository is a practice and educational project designed to emulate and study the core solutions and architectural workflows of 3Dollar (三元 / 三圓科技). It serves as a comprehensive enterprise software architecture prototype featuring order fulfillment, multi-warehouse inventory, accounting ledgers, CRM pipelines, and omni-channel customer integration.
+
+---
+
 # 3Dollar ERP (三圓科技架構引擎) - 專案使用說明書與快速啟動指南
 
 > [!IMPORTANT]
@@ -40,7 +48,7 @@ python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
 | **多倉庫存與流水** | [`http://127.0.0.1:8000/inventory`](http://127.0.0.1:8000/inventory) | 主倉與門市倉存量對照、原子性調撥表單、Append-Only 雙記帳庫存異動流水（Stock Ledger）。 |
 | **探吉 會計記帳** | [`http://127.0.0.1:8000/accounting`](http://127.0.0.1:8000/accounting) | 總分類帳試算表、多步驟損益表、應收 (AR)/應付 (AP) 4 區間帳齡分析、借貸平衡傳票登錄、款項沖銷與 Excel (.xlsx) 匯出。 |
 | **哩來 CRM 商機** | [`http://127.0.0.1:8000/crm`](http://127.0.0.1:8000/crm) | 四段商機管線看板（LEAD $\rightarrow$ DISCOVERY $\rightarrow$ PROPOSAL $\rightarrow$ WON/LOST）、客戶主檔管理、多品項商業報價單產出、Word (.docx) / 原生防竄改 PDF 串流下載、贏單一鍵轉 ERP 銷售訂單。 |
-| **AI 檔案自動化** | [`http://127.0.0.1:8000/ai/tools`](http://127.0.0.1:8000/ai/tools) | BOM 表 Excel 批量解析比價、原生 PDF 電子發票文字層抽取轉 AP 應付帳款、4合1全方位財務營運報表 Excel 串流下載。 |
+| **檔案自動化** | [`http://127.0.0.1:8000/ai/tools`](http://127.0.0.1:8000/ai/tools) | BOM 表 Excel 批量解析比價、原生 PDF 電子發票文字層抽取轉 AP 應付帳款、4合1全方位財務營運報表 Excel 串流下載。 |
 | **API 互動規格文件** | [`http://127.0.0.1:8000/docs`](http://127.0.0.1:8000/docs) | 檢視所有 FastAPI 路由、Swagger UI 互動式測試與資料傳輸物件（View DTO）綱要。 |
 
 
@@ -113,8 +121,8 @@ python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
    * **動作 (Action)**：於報價階段之商機卡片點擊 **「⚡ 贏單轉 ERP」**。
    * **預期成果 (Expected Outcome)**：系統透過原子性事務調用核心 `OrderService`，自動生成 CRM 通路之 `DRAFT` 銷售訂單（`SO-XXXX`），商機卡片即時移入「結案」欄位並標記為 `WON`，顯示綠色 `SO-XXXX ➜` 訂單標籤，點擊可直接跳轉至 `/orders` 進行後續鎖庫、出貨與開立發票作業。
 
-### 5. AI 檔案自動化與報表中心 (AI & File Automation Workflows)
-進入 **「AI 檔案自動化」**（`/ai/tools`）：
+### 5. 檔案自動化與報表中心 (File Automation Workflows)
+進入 **「檔案自動化」**（`/ai/tools`）：
 1. **BOM 表 Excel 批量解析與多供應商歷史比價**：
    * **動作 (Action)**：點擊頁籤「📑 BOM 物料比價 (Excel)」，點擊「下載 BOM 匯入範本 (.xlsx)」取得測試範本，並將其上傳點擊「開始智慧比價」。
    * **預期成果 (Expected Outcome)**：系統透過 `openpyxl` 解析各零件數量與規格，跨表檢索 ERP 歷史採購單資料庫，無刷新呈現各供應商報價、綠色高亮標示最低價推薦，並試算整體潛在節省金額。
@@ -131,23 +139,32 @@ python -m uvicorn src.channel_ui.web.app:app --reload --port 8000
 
 專案內建完整的自動化單元測試、整合測試、Playwright 瀏覽器測試與 AST 相依性架構檢查器。
 
-### 1. 執行全套測試 (91 項測試案例)
-在 PowerShell 終端機執行：
+### 1. 執行核心極速單元與整合測試 (171 項測試案例)
+測試體系已落實物理分流隔離（`tests/unit/` 與 `tests/e2e/`），預設敲 bare pytest 永遠只跑極速單元測試，無瀏覽器啟動開銷：
 
 ```powershell
 python -m pytest
 ```
 
-* **預期成果**：全部 91 項測試案例執行通過（`91 passed`），涵蓋：
-  * **Day 1**: 資料庫模型與邊界測試
+* **預期成果**：全部 171 項測試案例執行通過（`171 passed`），耗時約數秒，涵蓋：
+  * **Day 1**: 資料庫模型、抽象層與邊界測試
   * **Day 2**: 雙倉庫存流水、採購移動平均成本、訂單出貨、MIG 3.2.1 電子發票與四單勾稽測試
   * **Day 3**: 探吉 (TanGii) 會計借貸平衡、EAS 科目表、ERP 事件自動入帳、AR/AP 帳齡矩陣、款項沖銷、xlsxwriter 試算表/損益表匯出
   * **Day 4**: 哩來 (LiLai) CRM 客戶主檔與統編校驗、四段商機管線推進、python-docx / PyMuPDF 報價單套印、贏單一鍵轉 ERP 銷售訂單與 `/crm` Web 看板切片測試
   * **Day 5**: LINE Bot Webhook HMAC 簽名校驗、Stateless Token v3 換發、Flex 型錄卡片與離線仿真測試
-  * **Day 6**: AI Wrapper 外圍增強層：BOM 表 Excel 解析比價 (`openpyxl`)、原生 PDF 電子發票文字層抽取 (`fitz`)、4合1財務活頁簿匯出 (`xlsxwriter`) 與 `/ai/tools` Web GUI 垂直切片整合測試
-  * **Day 7**: 全鏈路端到端整合測試 (`tests/test_full_lifecycle_e2e.py` 覆蓋 B2B、B2C LINE 下單出貨、AI 檔案與會計 4-Way Match) 與 Playwright 真實 Chromium 瀏覽器端到端驗收 (`tests/test_playwright_day7_e2e.py`)
+  * **Day 6**: 檔案自動化外圍層：BOM 表 Excel 解析比價 (`openpyxl`)、原生 PDF 電子發票文字層抽取 (`fitz`)、4合1財務活頁簿匯出 (`xlsxwriter`) 與 `/ai/tools` Web GUI 垂直切片整合測試
+  * **Day 7 & 後續迭代**: 全鏈路端到端整合測試 (`tests/unit/test_full_lifecycle_e2e.py` 覆蓋 B2B、B2C LINE 下單出貨、檔案自動化與會計 4-Way Match)、多倉調撥、負數沖銷、BOM 分割與 Toast 撤回保護
 
-### 2. 執行單獨架構邊界檢查 (Architecture Fitness Function)
+### 2. 執行 Playwright 真實瀏覽器端到端驗收 (13 套 E2E 測試案例)
+依據專案規範，真實瀏覽器測試物理隔離於 `tests/e2e/`，僅在明確指定 e2e 目錄時以 Headed 模式啟動真實 Chromium 視窗：
+
+```powershell
+python -m pytest tests/e2e
+```
+
+* **預期成果**：啟動真實 Chromium 瀏覽器，自動化驗收 13 套業務流程 UI（含低庫存快捷開單、拆批出貨、CRM 贏單轉單光暈導航、會計沖銷彈窗等），全數通過。
+
+### 3. 執行單獨架構邊界檢查 (Architecture Fitness Function)
 確保系統嚴格遵守由外向內的單向相依性，杜絕底層反向引用外圍：
 
 ```powershell
